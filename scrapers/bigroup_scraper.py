@@ -7,11 +7,21 @@ Known URL structure:
   /ru/complex/{slug}/plans/ — floor plans with prices
 
 API endpoints (from DevTools):
-  POST /api/complexes/search?city=astana
+  GET  /api/complexes?city=astana
   GET  /api/complexes/{id}/flats?status=available
   GET  /api/v1/flats?complex_id={id}&city=astana
+  GET  /_next/data/{build-id}/ru/special/kvartiry-v-astane.json  (Next.js SSR)
 
-JS rendered — uses React. Playwright required for full data.
+JS rendered — uses React/Next.js.
+Playwright intercepts /api/ responses automatically.
+Run from residential IP; cloud IPs are blocked by Cloudflare WAF.
+
+Playwright usage (call from main.py with --playwright flag):
+    from scrapers.playwright_helper import PlaywrightSession
+    async with PlaywrightSession() as pw:
+        api_responses = await pw.intercept_json(
+            "https://bi.group/ru/special/kvartiry-v-astane", "/api/"
+        )
 """
 
 import logging

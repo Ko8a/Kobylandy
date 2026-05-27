@@ -201,12 +201,185 @@ def process_and_save(apartments: list[dict], scraping_log: list[str]) -> None:
 
     logger.info(f"Excel with analytics: {xlsx_path}")
 
+    # Add charts sheet
+    _add_charts_to_excel(xlsx_path, df, analytics)
+
     # Generate markdown report
     report_path = REPORTS / "report.md"
     generate_report(df, analytics, str(report_path), scraping_log)
 
     # Print summary to console
     _print_summary(df, analytics)
+
+
+def _add_charts_to_excel(xlsx_path: Path, df: pd.DataFrame, analytics: dict) -> None:
+    """Add charts sheet to the Excel workbook."""
+    from openpyxl import load_workbook
+    from openpyxl.chart import BarChart, Reference, PieChart
+    from openpyxl.chart.series import SeriesLabel
+    from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = load_workbook(xlsx_path)
+
+    # ── Sheet: Графики ────────────────────────────────────────────────────────
+    ws = wb.create_sheet("Графики и сводка", 1)
+
+    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=12)
+    title_font  = Font(bold=True, size=14, color="1F4E79")
+
+    def write_header(ws, row, col, text):
+        c = ws.cell(row=row, column=col, value=text)
+        c.fill = header_fill
+        c.font = header_font
+        c.alignment = Alignment(horizontal="center", vertical="center")
+
+    def write_title(ws, row, col, text):
+        c = ws.cell(row=row, column=col, value=text)
+        c.font = title_font
+
+    # ── 1. Средняя цена м² по застройщику ────────────────────────────────────
+    write_title(ws, 1, 1, "Средняя цена ₸/м² по застройщику")
+    write_header(ws, 2, 1, "Застройщик")
+    write_header(ws, 2, 2, "Ср. цена ₸/м²")
+
+    dev_avg = (
+        df[df["цена_за_м2_тг"].notna()]
+        .groupby("застройщик")["цена_за_м2_тг"]
+        .mean()
+        .round(0)
+        .sort_values(ascending=False)
+    )
+    for i, (dev, val) in enumerate(dev_avg.items(), start=3):
+        ws.cell(row=i, column=1, value=dev)
+        ws.cell(row=i, column=2, value=int(val))
+    ws.column_dimensions["A"].width = 22
+    ws.column_dimensions["B"].width = 16
+
+    bar1 = BarChart()
+    bar1.type = "bar"
+    bar1.title = "Средняя цена ₸/м² по застройщику"
+    bar1.y_axis.title = "Застройщик"
+    bar1.x_axis.title = "₸/м²"
+    bar1.height = 14
+    bar1.width = 22
+    data_ref = Reference(ws, min_col=2, min_row=2, max_row=2 + len(dev_avg))
+    cats_ref = Reference(ws, min_col=1, min_row=3, max_row=2 + len(dev_avg))
+    bar1.add_data(data_ref, titles_from_data=True)
+    bar1.set_categories(cats_ref)
+    bar1.series[0].graphicalProperties.solidFill = "2E75B6"
+    ws.add_chart(bar1, "D1")
+
+    # ── 2. Количество квартир по классу ──────────────────────────────────────
+    start_row = len(dev_avg) + 5
+    write_title(ws, start_row, 1, "Квартиры по классу жилья")
+    write_header(ws, start_row + 1, 1, "Класс жилья")
+    write_header(ws, start_row + 1, 2, "Количество")
+
+    class_cnt = df["класс_жилья"].value_counts()
+    for i, (cls, cnt) in enumerate(class_cnt.items(), start=start_row + 2):
+        ws.cell(row=i, column=1, value=cls)
+        ws.cell(row=i, column=2, value=int(cnt))
+
+    pie = PieChart()
+    pie.title = "Распределение по классу жилья"
+    pie.height = 12
+    pie.width = 16
+    pie_data = Reference(ws, min_col=2, min_row=start_row + 1, max_row=start_row + 1 + len(class_cnt))
+    pie_cats = Reference(ws, min_col=1, min_row=start_row + 2, max_row=start_row + 1 + len(class_cnt))
+    pie.add_data(pie_data, titles_from_data=True)
+    pie.set_categories(pie_cats)
+    ws.add_chart(pie, f"D{start_row}")
+
+    # ── 3. Цены по районам ────────────────────────────────────────────────────
+    start_row2 = start_row + len(class_cnt) + 4
+    write_title(ws, start_row2, 1, "Средняя цена ₸/м² по ключевым районам")
+    write_header(ws, start_row2 + 1, 1, "Район")
+    write_header(ws, start_row2 + 1, 2, "Ср. цена ₸/м²")
+    write_header(ws, start_row2 + 1, 3, "Кол-во кв.")
+
+    def extract_district(addr: str) -> str:
+        if not addr:
+            return "Не указан"
+        a = str(addr).lower()
+        if "есиль" in a:
+            return "Есиль"
+        if "алматинский" in a:
+            return "Алматинский"
+        if "байконур" in a:
+            return "Байконур"
+        if "нура" in a:
+            return "Нура"
+        return "Другой"
+
+    df2 = df[df["цена_за_м2_тг"].notna()].copy()
+    df2["район_кат"] = df2["район_адрес"].apply(extract_district)
+    dist_stats = df2.groupby("район_кат").agg(
+        avg_price=("цена_за_м2_тг", "mean"),
+        count=("цена_за_м2_тг", "count")
+    ).round(0).sort_values("avg_price", ascending=False)
+
+    for i, (dist, row_) in enumerate(dist_stats.iterrows(), start=start_row2 + 2):
+        ws.cell(row=i, column=1, value=dist)
+        ws.cell(row=i, column=2, value=int(row_["avg_price"]))
+        ws.cell(row=i, column=3, value=int(row_["count"]))
+
+    bar2 = BarChart()
+    bar2.type = "col"
+    bar2.title = "Средняя цена ₸/м² по районам Астаны"
+    bar2.y_axis.title = "₸/м²"
+    bar2.x_axis.title = "Район"
+    bar2.height = 11
+    bar2.width = 18
+    d2_ref = Reference(ws, min_col=2, min_row=start_row2 + 1, max_row=start_row2 + 1 + len(dist_stats))
+    c2_ref = Reference(ws, min_col=1, min_row=start_row2 + 2, max_row=start_row2 + 1 + len(dist_stats))
+    bar2.add_data(d2_ref, titles_from_data=True)
+    bar2.set_categories(c2_ref)
+    bar2.series[0].graphicalProperties.solidFill = "ED7D31"
+    ws.add_chart(bar2, f"D{start_row2}")
+
+    # ── 4. Сводная таблица — лучшие предложения по Score ─────────────────────
+    ws_sum = wb.create_sheet("🏆 Лучшие предложения", 2)
+    write_title(ws_sum, 1, 1, "ТОП-20 ЛУЧШИХ ПРЕДЛОЖЕНИЙ ПО КОМПЛЕКСНОМУ SCORE")
+    ws_sum.merge_cells("A1:M1")
+    ws_sum["A1"].alignment = Alignment(horizontal="center")
+
+    score_df = analytics.get("top20_best_score", pd.DataFrame())
+    if not score_df.empty:
+        display_cols = ["застройщик", "название_жк", "район_адрес", "комнат",
+                        "площадь_м2", "цена_полная_тг", "цена_за_м2_тг",
+                        "срок_сдачи", "класс_жилья", "условия_покупки", "score"]
+        score_display = score_df[[c for c in display_cols if c in score_df.columns]].copy()
+
+        # Format headers
+        for ci, col_name in enumerate(score_display.columns, start=1):
+            write_header(ws_sum, 2, ci, col_name)
+
+        # Fill rows with alternating colors
+        fill_even = PatternFill(start_color="DEEAF1", end_color="DEEAF1", fill_type="solid")
+        fill_odd  = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+        fill_top3 = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
+
+        price_cols_set = {"цена_полная_тг", "цена_за_м2_тг"}
+        for ri, (_, row_data) in enumerate(score_display.iterrows(), start=3):
+            for ci, (col_name, val) in enumerate(zip(score_display.columns, row_data), start=1):
+                cell = ws_sum.cell(row=ri, column=ci)
+                if col_name in price_cols_set and isinstance(val, (int, float)) and not pd.isna(val):
+                    cell.value = int(val)
+                    cell.number_format = '#,##0 [$₸]'
+                elif col_name == "score" and val is not None and not pd.isna(val):
+                    cell.value = round(float(val), 3)
+                else:
+                    cell.value = val if (val is not None and not (isinstance(val, float) and pd.isna(val))) else ""
+                cell.fill = fill_top3 if ri <= 5 else (fill_even if ri % 2 == 0 else fill_odd)
+
+        for ci, col_name in enumerate(score_display.columns, start=1):
+            max_len = max(len(str(col_name)), score_display.iloc[:, ci-1].astype(str).str.len().max())
+            ws_sum.column_dimensions[get_column_letter(ci)].width = min(max_len + 2, 35)
+
+    wb.save(xlsx_path)
+    logger.info(f"Charts and summary sheet added to: {xlsx_path}")
 
 
 def _print_summary(df: pd.DataFrame, analytics: dict) -> None:

@@ -152,8 +152,17 @@ def main():
         print("Sites blocked from cloud/datacenter IPs. Run from home network.")
         apartments = run_scrapers_real()
 
+    # Flatten if scrapers returned list-of-lists
+    flat = []
+    for item in apartments:
+        if isinstance(item, dict):
+            flat.append(item)
+        elif isinstance(item, list):
+            flat.extend(x for x in item if isinstance(x, dict))
+    apartments = flat
+
     if not apartments:
-        print("ERROR: no apartments. Use --demo or check network.")
+        print("ERROR: no apartments returned. Use --demo or check network.")
         sys.exit(1)
 
     print(f"Fetched: {len(apartments)} apartments")

@@ -101,7 +101,8 @@ def run_scrapers_demo():
 
 def run_scrapers_real():
     from main import run_scrapers
-    return run_scrapers()
+    result = run_scrapers()
+    return result[0] if isinstance(result, tuple) else result
 
 
 def setup_ghpages_worktree():

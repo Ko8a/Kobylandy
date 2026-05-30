@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>🏢 Новостройки Астаны — Интерактивный поиск</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --sb:300px;--hh:58px;
+  --bg:#f0f4f8;--sbg:#fff;--hbg:#1a3a5c;
+  --acc:#2563eb;--acc2:#60a5fa;--acc3:#dbeafe;
+  --txt:#1e293b;--txt2:#64748b;--brd:#e2e8f0;
+  --crd:#fff;--shd:0 2px 8px rgba(0,0,0,.08);--shd2:0 8px 24px rgba(0,0,0,.14);
+  --r:8px;--r2:12px;
+  --grn:#16a34a;--org:#ea580c;--red:#dc2626;--pur:#7c3aed;--gry:#94a3b8;--gld:#d97706;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);height:100vh;overflow:hidden;display:flex;flex-direction:column;font-size:13px}
+
+/* ── HEADER ── */
+#hdr{height:var(--hh);background:var(--hbg);display:flex;align-items:center;padding:0 16px;gap:12px;box-shadow:0 2px 12px rgba(0,0,0,.25);z-index:1000;flex-shrink:0}
+#hdr h1{color:#fff;font-size:17px;font-weight:800;white-space:nowrap;letter-spacing:-.3px}
+#hdr h1 span{color:var(--acc2)}
+#gsearch{flex:1;max-width:380px;height:34px;border:none;border-radius:17px;padding:0 14px 0 38px;font-size:13px;outline:none;background:rgba(255,255,255,.12) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='rgba(255,255,255,.6)' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z'/%3E%3C/svg%3E") no-repeat 12px center;color:#fff;transition:.2s}
+#gsearch::placeholder{color:rgba(255,255,255,.5)}
+#gsearch:focus{background-color:rgba(255,255,255,.22)}
+.hstats{display:flex;gap:20px;margin-left:auto}
+.hstat{text-align:center;color:#fff}
+.hstat .v{font-size:17px;font-weight:800;color:var(--acc2);line-height:1}
+.hstat .l{font-size:10px;color:rgba(255,255,255,.6);margin-top:1px}
+
+/* ── LAYOUT ── */
+#lay{display:flex;flex:1;overflow:hidden}
+
+/* ── SIDEBAR ── */
+#sb{width:var(--sb);background:var(--sbg);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;z-index:100}
+#sbh{padding:10px 14px;background:#f8fafc;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#sbh h3{font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.6px}
+#rst{font-size:11px;color:var(--acc);cursor:pointer;background:none;border:none;font-weight:600;padding:3px 8px;border-radius:4px}
+#rst:hover{background:var(--acc3)}
+#fscroll{flex:1;overflow-y:auto;padding:10px 12px}
+#fscroll::-webkit-scrollbar{width:3px}
+#fscroll::-webkit-scrollbar-thumb{background:var(--brd);border-radius:2px}
+
+.fs{margin-bottom:14px}
+.fl{display:block;font-size:10px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{padding:3px 10px;border-radius:14px;border:1.5px solid var(--brd);font-size:12px;font-weight:500;cursor:pointer;transition:.15s;user-select:none}
+.chip:hover{border-color:var(--acc);color:var(--acc)}
+.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+
+/* checks */
+.cl{display:flex;flex-direction:column;gap:5px}
+.ci{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;padding:2px 0}
+.ci input{width:14px;height:14px;accent-color:var(--acc);cursor:pointer;flex-shrink:0}
+.ci .cnt{margin-left:auto;font-size:10px;color:var(--txt2);background:var(--bg);padding:1px 5px;border-radius:8px}
+
+/* range */
+.rg{display:flex;flex-direction:column;gap:4px}
+.ri{display:flex;gap:6px}
+.rw{flex:1}
+.rl{font-size:9px;color:var(--txt2);margin-bottom:2px}
+.rw input[type=number]{width:100%;padding:4px 6px;border:1px solid var(--brd);border-radius:5px;font-size:11px;outline:none}
+.rw input:focus{border-color:var(--acc)}
+.drs{position:relative;height:18px;margin:3px 0}
+.drs input[type=range]{position:absolute;width:100%;height:4px;top:7px;left:0;background:transparent;pointer-events:none;-webkit-appearance:none;appearance:none}
+.drs input::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--acc);cursor:pointer;pointer-events:auto;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.rt{position:absolute;top:9px;left:0;right:0;height:4px;background:var(--brd);border-radius:2px;z-index:0}
+.rf{position:absolute;height:100%;background:var(--acc);border-radius:2px}
+
+/* toggles */
+.tgs{display:flex;gap:6px}
+.tg{flex:1;padding:5px;border:1.5px solid var(--brd);border-radius:6px;font-size:11px;cursor:pointer;text-align:center;transition:.15s;background:#fff;font-weight:500}
+.tg:hover{border-color:var(--acc);color:var(--acc)}
+.tg.on{background:var(--acc);border-color:var(--acc);color:#fff}
+
+/* ── CONTENT ── */
+#ct{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#mc{position:relative;height:47%;flex-shrink:0;border-bottom:2px solid var(--brd)}
+#map{height:100%}
+
+/* map legend */
+.mleg{position:absolute;bottom:20px;right:8px;background:rgba(255,255,255,.95);border-radius:var(--r);padding:8px 10px;box-shadow:var(--shd);z-index:500;font-size:10px}
+.mleg h4{font-size:10px;font-weight:700;color:var(--txt2);margin-bottom:5px}
+.mli{display:flex;align-items:center;gap:5px;margin-bottom:2px}
+.mld{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+
+/* stats bar */
+#stbar{display:flex;align-items:center;gap:12px;padding:6px 14px;background:#fff;border-bottom:1px solid var(--brd);flex-shrink:0;flex-wrap:wrap}
+.si{font-size:12px;color:var(--txt2)}
+.si strong{color:var(--txt);font-weight:700}
+.sdiv{width:1px;height:16px;background:var(--brd);flex-shrink:0}
+#vt{margin-left:auto;display:flex;gap:3px}
+.vb{padding:3px 9px;border:1px solid var(--brd);border-radius:5px;font-size:11px;cursor:pointer;background:#fff;transition:.15s;font-weight:500}
+.vb.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+#ss{padding:3px 7px;border:1px solid var(--brd);border-radius:5px;font-size:11px;outline:none;cursor:pointer}
+#eb{padding:3px 10px;background:var(--grn);color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-weight:600}
+#eb:hover{opacity:.88}
+
+/* results */
+#res{flex:1;overflow-y:auto;padding:10px}
+#res::-webkit-scrollbar{width:5px}
+#res::-webkit-scrollbar-thumb{background:var(--brd);border-radius:3px}
+
+/* cards */
+#cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+
+.ac{background:var(--crd);border-radius:var(--r2);border:1.5px solid var(--brd);padding:12px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
+.ac:hover,.ac.hl{border-color:var(--acc);box-shadow:var(--shd2)}
+.ac.hl{background:#eff6ff}
+
+.cbds{display:flex;gap:3px;margin-bottom:7px;flex-wrap:wrap}
+.bdg{font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;text-transform:uppercase;letter-spacing:.3px}
+.b-ekon{background:#dcfce7;color:#166534}
+.b-comf{background:#dbeafe;color:#1e40af}
+.b-comp{background:#ccfbf1;color:#134e4a}
+.b-biz{background:#ffedd5;color:#9a3412}
+.b-bize{background:#fee2e2;color:#991b1b}
+.b-elit{background:#ede9fe;color:#5b21b6}
+.b-sdan{background:#dcfce7;color:#166534}
+.b-strt{background:#ffedd5;color:#9a3412}
+.b-akc{background:#fee2e2;color:#991b1b;animation:blnk 2s infinite}
+.b-bron{background:#f1f5f9;color:#475569}
+.b-avl{background:#dbeafe;color:#1e40af}
+
+@keyframes blnk{0%,100%{opacity:1}50%{opacity:.5}}
+
+.ct1{font-size:13px;font-weight:700;color:var(--txt);margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cd{font-size:10px;color:var(--txt2);margin-bottom:7px}
+.cm{display:flex;gap:8px;margin-bottom:7px;flex-wrap:wrap}
+.cmi{font-size:11px;color:var(--txt2)}
+.cmi .v{color:var(--txt);font-weight:600}
+.cpr{font-size:17px;font-weight:800;color:var(--acc);line-height:1.1}
+.cpm2{font-size:10px;color:var(--txt2);margin-bottom:7px}
+.cnp{font-size:12px;font-weight:600;color:var(--red);margin-bottom:7px}
+.cf{display:flex;align-items:center;gap:5px;border-top:1px solid var(--brd);padding-top:7px;margin-top:4px;font-size:10px;color:var(--txt2);flex-wrap:wrap}
+.cfr a{font-size:10px;color:var(--acc);text-decoration:none}
+.cfr a:hover{text-decoration:underline}
+.csc{margin-left:auto;background:var(--bg);padding:1px 6px;border-radius:8px;font-size:9px;color:var(--txt2)}
+.sflag{position:absolute;top:0;right:0;background:var(--red);color:#fff;font-size:8px;font-weight:700;padding:2px 5px;border-radius:0 var(--r2) 0 var(--r);letter-spacing:.3px}
+
+/* table */
+#tbl-wrap{display:none;overflow-x:auto}
+#tbl-wrap.on{display:block}
+#cards.hid{display:none}
+
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{position:sticky;top:0;background:#f8fafc;padding:7px 9px;text-align:left;font-weight:700;font-size:10px;color:var(--txt2);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--brd);cursor:pointer;user-select:none;white-space:nowrap}
+th:hover{color:var(--acc)}
+th.sa::after{content:" ↑"}
+th.sd::after{content:" ↓"}
+td{padding:7px 9px;border-bottom:1px solid var(--brd);vertical-align:middle}
+tr:hover td{background:#f8fafc}
+tr.hl td{background:#eff6ff}
+.tp{font-weight:700;color:var(--acc)}
+.tnp{color:var(--txt2);font-style:italic;font-size:10px}
+
+/* empty */
+#emp{display:none;text-align:center;padding:50px 20px;color:var(--txt2)}
+#emp.on{display:block}
+#emp .ei{font-size:42px;margin-bottom:10px}
+
+/* popup */
+.leaflet-popup-content{margin:10px 13px;min-width:210px;max-width:260px}
+.pp-ttl{font-size:13px;font-weight:800;margin-bottom:2px;color:#1e293b}
+.pp-dev{font-size:10px;color:#64748b;margin-bottom:7px}
+.pp-pr{font-size:17px;font-weight:800;color:#2563eb;line-height:1}
+.pp-m2{font-size:10px;color:#64748b;margin-bottom:7px}
+.pp-np{font-size:12px;color:#dc2626;font-weight:700;margin-bottom:7px}
+.pp-g{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:7px}
+.pp-gi{font-size:10px}.pp-gi .l{color:#94a3b8}.pp-gi .v{font-weight:600}
+.pp-trm{font-size:10px;color:#16a34a;margin-bottom:6px}
+.pp-src{font-size:9px;color:#94a3b8;margin-bottom:5px}
+.pp-btn{display:block;text-align:center;padding:5px;background:#2563eb;color:#fff;border-radius:5px;text-decoration:none;font-size:11px;font-weight:600;margin-top:4px}
+.pp-btn:hover{opacity:.88}
+
+@media(max-width:700px){
+  #sb{position:fixed;left:-var(--sb);z-index:900;transition:left .25s}
+  #sb.open{left:0}
+  #mc{height:38%}
+  .hstats{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="hdr">
+  <h1>🏢 Новостройки <span>Астаны</span></h1>
+  <input id="gsearch" type="text" placeholder="Поиск по ЖК, застройщику, адресу…">
+  <div class="hstats">
+    <div class="hstat"><div class="v" id="hs-total">75</div><div class="l">квартир</div></div>
+    <div class="hstat"><div class="v" id="hs-avg">450К</div><div class="l">ср. ₸/м²</div></div>
+    <div class="hstat"><div class="v" id="hs-min">7.9М</div><div class="l">от цены</div></div>
+    <div class="hstat"><div class="v" id="hs-jk">26</div><div class="l">ЖК</div></div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div id="lay">
+
+<!-- SIDEBAR -->
+<div id="sb">
+  <div id="sbh">
+    <h3>Фильтры</h3>
+    <button id="rst">Сбросить</button>
+  </div>
+  <div id="fscroll">
+
+    <!-- Rooms -->
+    <div class="fs">
+      <span class="fl">Комнат</span>
+      <div class="chips" id="f-rooms">
+        <div class="chip on" data-val="all">Все</div>
+        <div class="chip" data-val="0">Студия</div>
+        <div class="chip" data-val="1">1</div>
+        <div class="chip" data-val="2">2</div>
+        <div class="chip" data-val="3">3</div>
+        <div class="chip" data-val="4">4+</div>
+      </div>
+    </div>
+
+    <!-- Price total -->
+    <div class="fs">
+      <span class="fl">Цена, млн ₸</span>
+      <div class="rg">
+        <div class="drs" id="dr-price">
+          <div class="rt"><div class="rf" id="rf-price"></div></div>
+          <input type="range" class="rmin" min="7" max="131" value="7" step="1">
+          <input type="range" class="rmax" min="7" max="131" value="131" step="1">
+        </div>
+        <div class="ri">
+          <div class="rw"><div class="rl">от</div><input type="number" id="p-min" min="7" max="131" value="7"></div>
+          <div class="rw"><div class="rl">до</div><input type="number" id="p-max" min="7" max="131" value="131"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Price m2 -->
+    <div class="fs">
+      <span class="fl">Цена за м², тыс. ₸</span>
+      <div class="rg">
+        <div class="drs" id="dr-m2">
+          <div class="rt"><div class="rf" id="rf-m2"></div></div>
+          <input type="range" class="rmin" min="250" max="1050" value="250" step="10">
+          <input type="range" class="rmax" min="250" max="1050" value="1050" step="10">
+        </div>
+        <div class="ri">
+          <div class="rw"><div class="rl">от</div><input type="number" id="m2-min" min="250" max="1050" value="250"></div>
+          <div class="rw"><div class="rl">до</div><input type="number" id="m2-max" min="250" max="1050" value="1050"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Area -->
+    <div class="fs">
+      <span class="fl">Площадь, м²</span>
+      <div class="rg">
+        <div class="drs" id="dr-area">
+          <div class="rt"><div class="rf" id="rf-area"></div></div>
+          <input type="range" class="rmin" min="27" max="210" value="27" step="1">
+          <input type="range" class="rmax" min="27" max="210" value="210" step="1">
+        </div>
+        <div class="ri">
+          <div class="rw"><div class="rl">от</div><input type="number" id="a-min" min="27" max="210" value="27"></div>
+          <div class="rw"><div class="rl">до</div><input type="number" id="a-max" min="27" max="210" value="210"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- District -->
+    <div class="fs">
+      <span class="fl">Район</span>
+      <div class="cl" id="f-dist">
+        <label class="ci"><input type="checkbox" value="есиль" checked><span>Есиль (левый берег)</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="алматинский" checked><span>Алматинский</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="байконур" checked><span>Байконур</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="нура" checked><span>Нура</span><span class="cnt"></span></label>
+      </div>
+    </div>
+
+    <!-- Class -->
+    <div class="fs">
+      <span class="fl">Класс жилья</span>
+      <div class="cl" id="f-class">
+        <label class="ci"><input type="checkbox" value="эконом" checked><span>🟢 Эконом</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="комфорт" checked><span>🔵 Комфорт</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="комфорт+" checked><span>🔵 Комфорт+</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="бизнес" checked><span>🟠 Бизнес</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="бизнес-элит" checked><span>🔴 Бизнес-элит</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="элит" checked><span>🟣 Элит</span><span class="cnt"></span></label>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <div class="fs">
+      <span class="fl">Статус</span>
+      <div class="cl" id="f-status">
+        <label class="ci"><input type="checkbox" value="сдан" checked><span>✅ Сдан</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="доступно" checked><span>🔓 Доступно</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="строится" checked><span>🏗 Строится</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="акция" checked><span>🔥 Акция</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="бронь" checked><span>🔒 Бронь</span><span class="cnt"></span></label>
+      </div>
+    </div>
+
+    <!-- Conditions -->
+    <div class="fs">
+      <span class="fl">Условия</span>
+      <div class="tgs">
+        <div class="tg on" id="f-mortgage">🏦 Ипотека</div>
+        <div class="tg on" id="f-install">📅 Рассрочка</div>
+      </div>
+    </div>
+
+    <!-- Source -->
+    <div class="fs">
+      <span class="fl">Источник</span>
+      <div class="cl" id="f-src">
+        <label class="ci"><input type="checkbox" value="bi.group" checked><span>bi.group</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="qazaqstroy.kz" checked><span>qazaqstroy.kz</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="sensata.kz" checked><span>sensata.kz</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="ramsqz.com" checked><span>ramsqz.com</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="gbg.kz" checked><span>gbg.kz</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="svoydom.kz" checked><span>svoydom.kz</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="sat-ns.kz" checked><span>sat-ns.kz</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="korter.kz" checked><span>korter.kz</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="krisha.kz" checked><span>krisha.kz</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="homsters.kz" checked><span>homsters.kz</span><span class="cnt"></span></label>
+        <label class="ci"><input type="checkbox" value="kapster.kz" checked><span>kapster.kz</span><span class="cnt"></span></label>
+      </div>
+    </div>
+
+  </div><!-- fscroll -->
+</div><!-- sidebar -->
+
+<!-- CONTENT -->
+<div id="ct">
+
+  <!-- MAP -->
+  <div id="mc">
+    <div id="map"></div>
+    <div class="mleg">
+      <h4>Класс жилья</h4>
+      <div class="mli"><div class="mld" style="background:#16a34a"></div>Эконом</div>
+      <div class="mli"><div class="mld" style="background:#2563eb"></div>Комфорт/+</div>
+      <div class="mli"><div class="mld" style="background:#ea580c"></div>Бизнес</div>
+      <div class="mli"><div class="mld" style="background:#dc2626"></div>Бизнес-элит</div>
+      <div class="mli"><div class="mld" style="background:#7c3aed"></div>Элит</div>
+      <div class="mli"><div class="mld" style="background:#94a3b8"></div>Без цены</div>
+    </div>
+  </div>
+
+  <!-- STATS BAR -->
+  <div id="stbar">
+    <div class="si">Найдено: <strong id="st-cnt">75</strong></div>
+    <div class="sdiv"></div>
+    <div class="si">Ср. цена/м²: <strong id="st-avg">—</strong></div>
+    <div class="sdiv"></div>
+    <div class="si">Мин. цена: <strong id="st-min">—</strong></div>
+    <div class="sdiv"></div>
+    <div class="si">Макс. цена: <strong id="st-max">—</strong></div>
+    <div class="sdiv"></div>
+    <select id="ss">
+      <option value="score-d">Лучший Score ↓</option>
+      <option value="price-a">Цена ↑</option>
+      <option value="price-d">Цена ↓</option>
+      <option value="m2-a">Цена/м² ↑</option>
+      <option value="m2-d">Цена/м² ↓</option>
+      <option value="area-a">Площадь ↑</option>
+      <option value="area-d">Площадь ↓</option>
+    </select>
+    <div id="vt">
+      <button class="vb on" id="vb-cards">🃏 Карточки</button>
+      <button class="vb" id="vb-table">📋 Таблица</button>
+    </div>
+    <button id="eb">⬇ CSV</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="res">
+    <div id="emp"><div class="ei">🔍</div><h3>Квартир не найдено</h3><p>Измените параметры фильтра</p></div>
+    <div id="cards"></div>
+    <div id="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-col="название_жк">ЖК</th>
+            <th data-col="застройщик">Застройщик</th>
+            <th data-col="район_адрес">Район</th>
+            <th data-col="комнат">Ком.</th>
+            <th data-col="площадь_м2">м²</th>
+            <th data-col="цена_полная_тг">Цена ₸</th>
+            <th data-col="цена_за_м2_тг">₸/м²</th>
+            <th data-col="этаж">Этаж</th>
+            <th data-col="срок_сдачи">Сдача</th>
+            <th data-col="статус">Статус</th>
+            <th data-col="класс_жилья">Класс</th>
+            <th data-col="условия_покупки">Условия</th>
+            <th data-col="score">Score</th>
+            <th>Ссылка</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- content -->
+</div><!-- layout -->
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────
+const APTS = [{"застройщик":"BI Group","название_жк":"BI Plaza","город":"Астана","район_адрес":"Есиль, пр. Туран 24","ссылка_жк":"https://bi.group/ru/complex/bi-plaza/","ссылка_квартира":"https://bi.group/ru/complex/bi-plaza/plans/?flat=10201","комнат":1,"площадь_м2":38.4,"цена_полная_тг":18432000.0,"цена_за_м2_тг":480000.0,"этаж":"7/24","дом_блок_секция":"Блок А","срок_сдачи":"Q4 2025","статус":"доступно","отделка":"чистовая","класс_жилья":"комфорт","условия_покупки":"ипотека, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"bi.group","score":0.848,"id":0,"lat":51.16405,"lng":71.46796},{"застройщик":"BI Group","название_жк":"BI Plaza","город":"Астана","район_адрес":"Есиль, пр. Туран 24","ссылка_жк":"https://bi.group/ru/complex/bi-plaza/","ссылка_квартира":"https://bi.group/ru/complex/bi-plaza/plans/?flat=10202","комнат":2,"площадь_м2":62.1,"цена_полная_тг":30429000.0,"цена_за_м2_тг":490000.0,"этаж":"10/24","дом_блок_секция":"Блок А","срок_сдачи":"Q4 2025","статус":"доступно","отделка":"чистовая","класс_жилья":"комфорт","условия_покупки":"ипотека, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"bi.group","score":0.84,"id":1,"lat":51.1642,"lng":71.46814},{"застройщик":"BI Group","название_жк":"BI Plaza","город":"Астана","район_адрес":"Есиль, пр. Туран 24","ссылка_жк":"https://bi.group/ru/complex/bi-plaza/","ссылка_квартира":"https://bi.group/ru/complex/bi-plaza/plans/?flat=10203","комнат":3,"площадь_м2":88.7,"цена_полная_тг":43463000.0,"цена_за_м2_тг":490000.0,"этаж":"5/24","дом_блок_секция":"Блок Б","срок_сдачи":"Q4 2025","статус":"доступно","отделка":"черновая","класс_жилья":"комфорт","условия_покупки":"ипотека, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"bi.group","score":0.84,"id":2,"lat":51.16435,"lng":71.46832},{"застройщик":"BI Group","название_жк":"BI City 2","город":"Астана","район_адрес":"Алматинский, ул. Богенбай батыра 28","ссылка_жк":"https://bi.group/ru/complex/bi-city-2/","ссылка_квартира":"https://bi.group/ru/complex/bi-city-2/plans/?flat=20101","комнат":1,"площадь_м2":34.2,"цена_полная_тг":13338000.0,"цена_за_м2_тг":390000.0,"этаж":"3/16","дом_блок_секция":"Секция 1","срок_сдачи":"Q2 2026","статус":"доступно","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"bi.group","score":0.84,"id":3,"lat":51.1286,"lng":71.4315},{"застройщик":"BI Group","название_жк":"BI City 2","город":"Астана","район_адрес":"Алматинский, ул. Богенбай батыра 28","ссылка_жк":"https://bi.group/ru/complex/bi-city-2/","ссылка_квартира":"https://bi.group/ru/complex/bi-city-2/plans/?flat=20102","комнат":2,"площадь_м2":55.8,"цена_полная_тг":21762000.0,"цена_за_м2_тг":390000.0,"этаж":"8/16","дом_блок_секция":"Секция 2","срок_сдачи":"Q2 2026","статус":"доступно","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"bi.group","score":0.84,"id":4,"lat":51.12875,"lng":71.43168},{"застройщик":"BI Group","название_жк":"BI City 2","город":"Астана","район_адрес":"Алматинский, ул. Богенбай батыра 28","ссылка_жк":"https://bi.group/ru/complex/bi-city-2/","ссылка_квартира":"https://bi.group/ru/complex/bi-city-2/plans/?flat=20103","комнат":3,"площадь_м2":79.4,"цена_полная_тг":30962000.0,"цена_за_м2_тг":390000.0,"этаж":"12/16","дом_блок_секция":"Секция 3","срок_сдачи":"Q2 2026","статус":"доступно","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"bi.group","score":0.84,"id":5,"lat":51.1289,"lng":71.43186},{"застройщик":"BI Group","название_жк":"Alatau City","город":"Астана","район_адрес":"Есиль, пр. Кабанбай батыра 58","ссылка_жк":"https://bi.group/ru/complex/alatau-city/","ссылка_квартира":"https://bi.group/ru/complex/alatau-city/plans/?flat=30101","комнат":1,"площадь_м2":42.5,"цена_полная_тг":27625000.0,"цена_за_м2_тг":650000.0,"этаж":"15/30","дом_блок_секция":"Tower A","срок_сдачи":"Q1 2027","статус":"доступно","отделка":"дизайнерская","класс_жилья":"бизнес","условия_покупки":"ипотека, рассрочка","дата_парсинга":"2026-05-30 10:45:38","источник":"bi.group","score":0.633,"id":6,"lat":51.15735,"lng":71.48254},{"застройщик":"BI Group","название_жк":"Alatau City","город":"Астана","район_адрес":"Есиль, пр. Кабанбай батыра 58","ссылка_жк":"https://bi.group/ru/complex/alatau-city/","ссылка_квартира":"https://bi.group/ru/complex/alatau-city/plans/?flat=30102","комнат":2,"площадь_м2":71.8,"цена_полная_тг":46670000.0,"цена_за_м2_тг":650000.0,"этаж":"20/30","дом_блок_секция":"Tower B","срок_сдачи":"Q1 2027","статус":"доступно","отделка":"дизайнерская","класс_жилья":"бизнес","условия_покупки":"ипотека, рассрочка","дата_парсинга":"2026-05-30 10:45:38","источник":"bi.group","score":0.633,"id":7,"lat":51.1575,"lng":71.48146},{"застройщик":"Qazaqstroy","название_жк":"Triumph","город":"Астана","район_адрес":"Байконур, ул. Сарыарка 26","ссылка_жк":"https://qazaqstroy.kz/ru/kompleksy/triumph","ссылка_квартира":"https://qazaqstroy.kz/ru/kvartiry/triumph-1k-35m2","комнат":1,"площадь_м2":35.0,"цена_полная_тг":12250000.0,"цена_за_м2_тг":350000.0,"этаж":"4/18","дом_блок_секция":"Дом 1","срок_сдачи":"Q3 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы банк, рассрочка 24 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"qazaqstroy.kz","score":0.885,"id":8,"lat":51.14895,"lng":71.38714},{"застройщик":"Qazaqstroy","название_жк":"Triumph","город":"Астана","район_адрес":"Байконур, ул. Сарыарка 26","ссылка_жк":"https://qazaqstroy.kz/ru/kompleksy/triumph","ссылка_квартира":"https://qazaqstroy.kz/ru/kvartiry/triumph-2k-58m2","комнат":2,"площадь_м2":58.0,"цена_полная_тг":20300000.0,"цена_за_м2_тг":350000.0,"этаж":"6/18","дом_блок_секция":"Дом 1","срок_сдачи":"Q3 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы банк, рассрочка 24 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"qazaqstroy.kz","score":0.885,"id":9,"lat":51.1491,"lng":71.38732},{"застройщик":"Qazaqstroy","название_жк":"Triumph","город":"Астана","район_адрес":"Байконур, ул. Сарыарка 26","ссылка_жк":"https://qazaqstroy.kz/ru/kompleksy/triumph","ссылка_квартира":"https://qazaqstroy.kz/ru/kvartiry/triumph-3k-82m2","комнат":3,"площадь_м2":82.0,"цена_полная_тг":28700000.0,"цена_за_м2_тг":350000.0,"этаж":"9/18","дом_блок_секция":"Дом 2","срок_сдачи":"Q3 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы банк, рассрочка 24 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"qazaqstroy.kz","score":0.885,"id":10,"lat":51.14925,"lng":71.3875},{"застройщик":"Qazaqstroy","название_жк":"Astra","город":"Астана","район_адрес":"Алматинский, пр. Республики 14","ссылка_жк":"https://qazaqstroy.kz/ru/kompleksy/astra","ссылка_квартира":"https://qazaqstroy.kz/ru/kvartiry/astra-1k-40m2","комнат":1,"площадь_м2":40.0,"цена_полная_тг":16000000.0,"цена_за_м2_тг":400000.0,"этаж":"5/20","дом_блок_секция":"Блок 1","срок_сдачи":"Q4 2026","статус":"строится","отделка":"чистовая","класс_жилья":"комфорт","условия_покупки":"ипотека, рассрочка до сдачи","дата_парсинга":"2026-05-30 10:45:38","источник":"qazaqstroy.kz","score":0.803,"id":11,"lat":51.13485,"lng":71.44138},{"застройщик":"Qazaqstroy","название_жк":"Astra","город":"Астана","район_адрес":"Алматинский, пр. Республики 14","ссылка_жк":"https://qazaqstroy.kz/ru/kompleksy/astra","ссылка_квартира":"https://qazaqstroy.kz/ru/kvartiry/astra-2k-65m2","комнат":2,"площадь_м2":65.0,"цена_полная_тг":26650000.0,"цена_за_м2_тг":410000.0,"этаж":"10/20","дом_блок_секция":"Блок 2","срок_сдачи":"Q4 2026","статус":"строится","отделка":"чистовая","класс_жилья":"комфорт","условия_покупки":"ипотека, рассрочка до сдачи","дата_парсинга":"2026-05-30 10:45:38","источник":"qazaqstroy.kz","score":0.795,"id":12,"lat":51.135,"lng":71.44156},{"застройщик":"Sensata","название_жк":"Sensata Residence","город":"Астана","район_адрес":"Есиль, Дипломатический городок, ул. Иманова 32","ссылка_жк":"https://sensata.kz/","ссылка_квартира":"https://sensata.kz/#apartments","комнат":1,"площадь_м2":49.2,"цена_полная_тг":42312000.0,"цена_за_м2_тг":860000.0,"этаж":"10/14","дом_блок_секция":"Башня А","срок_сдачи":"Q2 2027","статус":"строится","отделка":"дизайнерская","класс_жилья":"бизнес-элит","условия_покупки":"ипотека, рассрочка 50%+50% при сдаче","дата_парсинга":"2026-05-30 10:45:38","источник":"sensata.kz","score":0.448,"id":13,"lat":51.17105,"lng":71.42874},{"застройщик":"Sensata","название_жк":"Sensata Residence","город":"Астана","район_адрес":"Есиль, Дипломатический городок, ул. Иманова 32","ссылка_жк":"https://sensata.kz/","ссылка_квартира":"https://sensata.kz/#apartments-2","комнат":2,"площадь_м2":78.5,"цена_полная_тг":67510000.0,"цена_за_м2_тг":860000.0,"этаж":"12/14","дом_блок_секция":"Башня Б","срок_сдачи":"Q2 2027","статус":"строится","отделка":"дизайнерская","класс_жилья":"бизнес-элит","условия_покупки":"ипотека, рассрочка 50%+50% при сдаче","дата_парсинга":"2026-05-30 10:45:38","источник":"sensata.kz","score":0.448,"id":14,"lat":51.1712,"lng":71.42766},{"застройщик":"Sensata","название_жк":"Sensata Residence","город":"Астана","район_адрес":"Есиль, Дипломатический городок, ул. Иманова 32","ссылка_жк":"https://sensata.kz/","ссылка_квартира":"https://sensata.kz/#penthouse","комнат":3,"площадь_м2":125.0,"цена_полная_тг":131250000.0,"цена_за_м2_тг":1050000.0,"этаж":"14/14","дом_блок_секция":"Penthouse","срок_сдачи":"Q2 2027","статус":"строится","отделка":"дизайнерская","класс_жилья":"элит","условия_покупки":"ипотека, рассрочка 50%+50% при сдаче","дата_парсинга":"2026-05-30 10:45:38","источник":"sensata.kz","score":0.418,"id":15,"lat":51.17135,"lng":71.42784},{"застройщик":"Rams","название_жк":"Rams City","город":"Астана","район_адрес":"Байконур, ул. Момышулы 14","ссылка_жк":"https://ramsqz.com/ru/home","ссылка_квартира":"https://ramsqz.com/ru/apartments/rams-city-1k","комнат":1,"площадь_м2":36.5,"цена_полная_тг":14235000.0,"цена_за_м2_тг":390000.0,"этаж":"5/17","дом_блок_секция":"Корпус 1","срок_сдачи":"Q1 2026","статус":"строится","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека, рассрочка 20 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"ramsqz.com","score":0.798,"id":16,"lat":51.151,"lng":71.39482},{"застройщик":"Rams","название_жк":"Rams City","город":"Астана","район_адрес":"Байконур, ул. Момышулы 14","ссылка_жк":"https://ramsqz.com/ru/home","ссылка_квартира":"https://ramsqz.com/ru/apartments/rams-city-2k","комнат":2,"площадь_м2":57.8,"цена_полная_тг":22542000.0,"цена_за_м2_тг":390000.0,"этаж":"8/17","дом_блок_секция":"Корпус 2","срок_сдачи":"Q1 2026","статус":"строится","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека, рассрочка 20 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"ramsqz.com","score":0.798,"id":17,"lat":51.15115,"lng":71.395},{"застройщик":"Rams","название_жк":"Rams City","город":"Астана","район_адрес":"Байконур, ул. Момышулы 14","ссылка_жк":"https://ramsqz.com/ru/home","ссылка_квартира":"https://ramsqz.com/ru/apartments/rams-city-studio","комнат":0,"площадь_м2":27.0,"цена_полная_тг":9180000.0,"цена_за_м2_тг":340000.0,"этаж":"3/17","дом_блок_секция":"Корпус 1","срок_сдачи":"Q1 2026","статус":"строится","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека, рассрочка 20 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"ramsqz.com","score":0.835,"id":18,"lat":51.1513,"lng":71.39518},{"застройщик":"GBG","название_жк":"GBG Park","город":"Астана","район_адрес":"Есиль, парк Астана, ул. Достык 5","ссылка_жк":"https://gbg.kz/astana","ссылка_квартира":"https://gbg.kz/astana/gbg-park-1k","комнат":1,"площадь_м2":44.0,"цена_полная_тг":25960000.0,"цена_за_м2_тг":590000.0,"этаж":"9/22","дом_блок_секция":"Башня 1","срок_сдачи":"Q3 2026","статус":"строится","отделка":"чистовая","класс_жилья":"комфорт+","условия_покупки":"ипотека, рассрочка 0% до сдачи","дата_парсинга":"2026-05-30 10:45:38","источник":"gbg.kz","score":0.7,"id":19,"lat":51.16225,"lng":71.45856},{"застройщик":"GBG","название_жк":"GBG Park","город":"Астана","район_адрес":"Есиль, парк Астана, ул. Достык 5","ссылка_жк":"https://gbg.kz/astana","ссылка_квартира":"https://gbg.kz/astana/gbg-park-2k","комнат":2,"площадь_м2":68.5,"цена_полная_тг":40415000.0,"цена_за_м2_тг":590000.0,"этаж":"14/22","дом_блок_секция":"Башня 2","срок_сдачи":"Q3 2026","статус":"строится","отделка":"чистовая","класс_жилья":"комфорт+","условия_покупки":"ипотека, рассрочка 0% до сдачи","дата_парсинга":"2026-05-30 10:45:38","источник":"gbg.kz","score":0.7,"id":20,"lat":51.1624,"lng":71.45874},{"застройщик":"GBG","название_жк":"GBG Park","город":"Астана","район_адрес":"Есиль, парк Астана, ул. Достык 5","ссылка_жк":"https://gbg.kz/astana","ссылка_квартира":"https://gbg.kz/astana/gbg-park-3k","комнат":3,"площадь_м2":96.2,"цена_полная_тг":57718000.0,"цена_за_м2_тг":600000.0,"этаж":"18/22","дом_блок_секция":"Башня 2","срок_сдачи":"Q3 2026","статус":"строится","отделка":"чистовая","класс_жилья":"комфорт+","условия_покупки":"ипотека, рассрочка 0% до сдачи","дата_парсинга":"2026-05-30 10:45:38","источник":"gbg.kz","score":0.693,"id":21,"lat":51.16255,"lng":71.45766},{"застройщик":"Svoy Dom","название_жк":"Свой Дом Плюс","город":"Астана","район_адрес":"Алматинский, мкр. Айгерим-1, ул. Рыскулова 8","ссылка_жк":"https://svoydom.kz/projects/svoy-dom-plus/","ссылка_квартира":"https://svoydom.kz/projects/svoy-dom-plus/apartments/1k-33m2","комнат":1,"площадь_м2":33.0,"цена_полная_тг":11550000.0,"цена_за_м2_тг":350000.0,"этаж":"2/9","дом_блок_секция":"Корпус 2","срок_сдачи":"Q2 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы, рассрочка 12 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"svoydom.kz","score":0.905,"id":22,"lat":51.11905,"lng":71.41714},{"застройщик":"Svoy Dom","название_жк":"Свой Дом Плюс","город":"Астана","район_адрес":"Алматинский, мкр. Айгерим-1, ул. Рыскулова 8","ссылка_жк":"https://svoydom.kz/projects/svoy-dom-plus/","ссылка_квартира":"https://svoydom.kz/projects/svoy-dom-plus/apartments/2k-52m2","комнат":2,"площадь_м2":52.0,"цена_полная_тг":18200000.0,"цена_за_м2_тг":350000.0,"этаж":"5/9","дом_блок_секция":"Корпус 3","срок_сдачи":"Q2 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы, рассрочка 12 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"svoydom.kz","score":0.905,"id":23,"lat":51.1192,"lng":71.41732},{"застройщик":"Svoy Dom","название_жк":"Свой Дом Плюс","город":"Астана","район_адрес":"Алматинский, мкр. Айгерим-1, ул. Рыскулова 8","ссылка_жк":"https://svoydom.kz/projects/svoy-dom-plus/","ссылка_квартира":"https://svoydom.kz/projects/svoy-dom-plus/apartments/3k-75m2","комнат":3,"площадь_м2":75.0,"цена_полная_тг":26250000.0,"цена_за_м2_тг":350000.0,"этаж":"7/9","дом_блок_секция":"Корпус 1","срок_сдачи":"Q2 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы, рассрочка 12 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"svoydom.kz","score":0.905,"id":24,"lat":51.11935,"lng":71.4175},{"застройщик":"Svoy Dom","название_жк":"Экспо Резиденс","город":"Астана","район_адрес":"Есиль, мкр. Экспо, ул. Орынбор 14","ссылка_жк":"https://svoydom.kz/projects/expo-residence/","ссылка_квартира":"https://svoydom.kz/projects/expo-residence/apartments/1k-45m2","комнат":1,"площадь_м2":45.0,"цена_полная_тг":22500000.0,"цена_за_м2_тг":500000.0,"этаж":"12/25","дом_блок_секция":"Блок А","срок_сдачи":"Q4 2026","статус":"строится","отделка":"чистовая","класс_жилья":"комфорт","условия_покупки":"ипотека, рассрочка до сдачи","дата_парсинга":"2026-05-30 10:45:38","источник":"svoydom.kz","score":0.755,"id":25,"lat":51.1692,"lng":71.41598},{"застройщик":"SAT Development","название_жк":"SAT Nova","город":"Астана","район_адрес":"Байконур, ул. Кенесары 52","ссылка_жк":"https://sat-ns.kz/","ссылка_квартира":"https://sat-ns.kz/#nova-1k","комнат":1,"площадь_м2":37.8,"цена_полная_тг":15120000.0,"цена_за_м2_тг":400000.0,"этаж":"4/14","дом_блок_секция":"Секция А","срок_сдачи":"Q1 2026","статус":"строится","отделка":"черновая","класс_жилья":"комфорт","условия_покупки":"ипотека, рассрочка 18 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"sat-ns.kz","score":0.79,"id":26,"lat":51.15425,"lng":71.38156},{"застройщик":"SAT Development","название_жк":"SAT Nova","город":"Астана","район_адрес":"Байконур, ул. Кенесары 52","ссылка_жк":"https://sat-ns.kz/","ссылка_квартира":"https://sat-ns.kz/#nova-2k","комнат":2,"площадь_м2":60.4,"цена_полная_тг":24160000.0,"цена_за_м2_тг":400000.0,"этаж":"7/14","дом_блок_секция":"Секция Б","срок_сдачи":"Q1 2026","статус":"строится","отделка":"черновая","класс_жилья":"комфорт","условия_покупки":"ипотека, рассрочка 18 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"sat-ns.kz","score":0.79,"id":27,"lat":51.1544,"lng":71.38174},{"застройщик":"SAT Development","название_жк":"SAT Nova","город":"Астана","район_адрес":"Байконур, ул. Кенесары 52","ссылка_жк":"https://sat-ns.kz/","ссылка_квартира":"https://sat-ns.kz/#nova-3k","комнат":3,"площадь_м2":85.0,"цена_полная_тг":34000000.0,"цена_за_м2_тг":400000.0,"этаж":"10/14","дом_блок_секция":"Секция В","срок_сдачи":"Q1 2026","статус":"строится","отделка":"черновая","класс_жилья":"комфорт","условия_покупки":"ипотека, рассрочка 18 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"sat-ns.kz","score":0.79,"id":28,"lat":51.15455,"lng":71.38066},{"застройщик":"Elita Group","название_жк":"Elita Residence","город":"Астана","район_адрес":"Есиль, ул. Сыганак 14","ссылка_жк":"https://korter.kz/жк/elita-residence","ссылка_квартира":"https://korter.kz/жк/elita-residence/планировки/1к-41м2","комнат":1,"площадь_м2":41.0,"цена_полная_тг":24600000.0,"цена_за_м2_тг":600000.0,"этаж":"6/18","дом_блок_секция":"Корпус 1","срок_сдачи":"Q2 2026","статус":"строится","отделка":"чистовая","класс_жилья":"бизнес","условия_покупки":"ипотека, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"korter.kz","score":0.69,"id":29,"lat":51.1601,"lng":71.45944},{"застройщик":"Elita Group","название_жк":"Elita Residence","город":"Астана","район_адрес":"Есиль, ул. Сыганак 14","ссылка_жк":"https://korter.kz/жк/elita-residence","ссылка_квартира":"https://korter.kz/жк/elita-residence/планировки/2к-66м2","комнат":2,"площадь_м2":66.0,"цена_полная_тг":41580000.0,"цена_за_м2_тг":630000.0,"этаж":"11/18","дом_блок_секция":"Корпус 2","срок_сдачи":"Q2 2026","статус":"строится","отделка":"чистовая","класс_жилья":"бизнес","условия_покупки":"ипотека, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"korter.kz","score":0.668,"id":30,"lat":51.16025,"lng":71.45962},{"застройщик":"Miras Group","название_жк":"Miras Park","город":"Астана","район_адрес":"Нура, пр. Женис 45","ссылка_жк":"https://korter.kz/жк/miras-park","ссылка_квартира":"https://korter.kz/жк/miras-park/планировки/1к-38м2","комнат":1,"площадь_м2":38.0,"цена_полная_тг":13300000.0,"цена_за_м2_тг":350000.0,"этаж":"3/12","дом_блок_секция":"Дом 3","срок_сдачи":"Q3 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы","дата_парсинга":"2026-05-30 10:45:38","источник":"korter.kz","score":0.845,"id":31,"lat":51.1088,"lng":71.4628},{"застройщик":"Miras Group","название_жк":"Miras Park","город":"Астана","район_адрес":"Нура, пр. Женис 45","ссылка_жк":"https://korter.kz/жк/miras-park","ссылка_квартира":"https://korter.kz/жк/miras-park/планировки/2к-60м2","комнат":2,"площадь_м2":60.0,"цена_полная_тг":21000000.0,"цена_за_м2_тг":350000.0,"этаж":"6/12","дом_блок_секция":"Дом 4","срок_сдачи":"Q3 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы","дата_парсинга":"2026-05-30 10:45:38","источник":"korter.kz","score":0.845,"id":32,"lat":51.10895,"lng":71.46298},{"застройщик":"Tamos Invest","название_жк":"Tamos Comfort","город":"Астана","район_адрес":"Алматинский, мкр. Самал-2, ул. Бейбарыс Sultan 14","ссылка_жк":"https://korter.kz/жк/tamos-comfort","ссылка_квартира":"https://korter.kz/жк/tamos-comfort/планировки/1к-36м2","комнат":1,"площадь_м2":36.0,"цена_полная_тг":12960000.0,"цена_за_м2_тг":360000.0,"этаж":"4/10","дом_блок_секция":"Корпус А","срок_сдачи":"Q4 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека, рассрочка","дата_парсинга":"2026-05-30 10:45:38","источник":"korter.kz","score":0.88,"id":33,"lat":51.13045,"lng":71.45416},{"застройщик":"Tamos Invest","название_жк":"Tamos Comfort","город":"Астана","район_адрес":"Алматинский, мкр. Самал-2, ул. Бейбарыс Sultan 14","ссылка_жк":"https://korter.kz/жк/tamos-comfort","ссылка_квартира":"https://korter.kz/жк/tamos-comfort/планировки/2к-56м2","комнат":2,"площадь_м2":56.0,"цена_полная_тг":20160000.0,"цена_за_м2_тг":360000.0,"этаж":"7/10","дом_блок_секция":"Корпус Б","срок_сдачи":"Q4 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека, рассрочка","дата_парсинга":"2026-05-30 10:45:38","источник":"korter.kz","score":0.88,"id":34,"lat":51.1306,"lng":71.45434},{"застройщик":"Tamos Invest","название_жк":"Tamos Comfort","город":"Астана","район_адрес":"Алматинский, мкр. Самал-2, ул. Бейбарыс Sultan 14","ссылка_жк":"https://korter.kz/жк/tamos-comfort","ссылка_квартира":"https://korter.kz/жк/tamos-comfort/планировки/3к-78м2","комнат":3,"площадь_м2":78.0,"цена_полная_тг":28080000.0,"цена_за_м2_тг":360000.0,"этаж":"9/10","дом_блок_секция":"Корпус В","срок_сдачи":"Q4 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека, рассрочка","дата_парсинга":"2026-05-30 10:45:38","источник":"korter.kz","score":0.88,"id":35,"lat":51.13075,"lng":71.45326},{"застройщик":"Kusto Home","название_жк":"Capital Park","город":"Астана","район_адрес":"Есиль, ул. Динмухамеда Кунаева 8","ссылка_жк":"https://krisha.kz/kompleksy/capital-park-astana/","ссылка_квартира":"https://krisha.kz/kompleksy/capital-park-astana/flat/1k-48m2","комнат":1,"площадь_м2":48.0,"цена_полная_тг":33600000.0,"цена_за_м2_тг":700000.0,"этаж":"8/20","дом_блок_секция":"Блок 1","срок_сдачи":"Q3 2026","статус":"строится","отделка":"чистовая","класс_жилья":"бизнес","условия_покупки":"ипотека Halyk/Kaspi, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"krisha.kz","score":0.628,"id":36,"lat":51.1652,"lng":71.47284},{"застройщик":"Kusto Home","название_жк":"Capital Park","город":"Астана","район_адрес":"Есиль, ул. Динмухамеда Кунаева 8","ссылка_жк":"https://krisha.kz/kompleksy/capital-park-astana/","ссылка_квартира":"https://krisha.kz/kompleksy/capital-park-astana/flat/2k-74m2","комнат":2,"площадь_м2":74.0,"цена_полная_тг":51800000.0,"цена_за_м2_тг":700000.0,"этаж":"14/20","дом_блок_секция":"Блок 2","срок_сдачи":"Q3 2026","статус":"строится","отделка":"чистовая","класс_жилья":"бизнес","условия_покупки":"ипотека Halyk/Kaspi, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"krisha.kz","score":0.628,"id":37,"lat":51.16535,"lng":71.47302},{"застройщик":"Kusto Home","название_жк":"Capital Park","город":"Астана","район_адрес":"Есиль, ул. Динмухамеда Кунаева 8","ссылка_жк":"https://krisha.kz/kompleksy/capital-park-astana/","ссылка_квартира":"https://krisha.kz/kompleksy/capital-park-astana/flat/3k-102m2","комнат":3,"площадь_м2":102.0,"цена_полная_тг":71400000.0,"цена_за_м2_тг":700000.0,"этаж":"17/20","дом_блок_секция":"Блок 3","срок_сдачи":"Q3 2026","статус":"строится","отделка":"чистовая","класс_жилья":"бизнес","условия_покупки":"ипотека Halyk/Kaspi, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"krisha.kz","score":0.628,"id":38,"lat":51.1655,"lng":71.4732},{"застройщик":"Bazis-A","название_жк":"Bazis Standard","город":"Астана","район_адрес":"Алматинский, ул. Чехова 28","ссылка_жк":"https://homsters.kz/estate/bazis-standard/","ссылка_квартира":"https://homsters.kz/estate/bazis-standard/1k-33m2","комнат":1,"площадь_м2":33.0,"цена_полная_тг":11220000.0,"цена_за_м2_тг":340000.0,"этаж":"2/12","дом_блок_секция":"Корпус 1","срок_сдачи":"Q1 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы банк","дата_парсинга":"2026-05-30 10:45:38","источник":"homsters.kz","score":0.918,"id":39,"lat":51.12355,"lng":71.44698},{"застройщик":"Bazis-A","название_жк":"Bazis Standard","город":"Астана","район_адрес":"Алматинский, ул. Чехова 28","ссылка_жк":"https://homsters.kz/estate/bazis-standard/","ссылка_квартира":"https://homsters.kz/estate/bazis-standard/2k-54m2","комнат":2,"площадь_м2":54.0,"цена_полная_тг":18360000.0,"цена_за_м2_тг":340000.0,"этаж":"5/12","дом_блок_секция":"Корпус 2","срок_сдачи":"Q1 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы банк","дата_парсинга":"2026-05-30 10:45:38","источник":"homsters.kz","score":0.918,"id":40,"lat":51.1237,"lng":71.44716},{"застройщик":"Bazis-A","название_жк":"Bazis Standard","город":"Астана","район_адрес":"Алматинский, ул. Чехова 28","ссылка_жк":"https://homsters.kz/estate/bazis-standard/","ссылка_квартира":"https://homsters.kz/estate/bazis-standard/3k-77m2","комнат":3,"площадь_м2":77.0,"цена_полная_тг":27720000.0,"цена_за_м2_тг":360000.0,"этаж":"9/12","дом_блок_секция":"Корпус 3","срок_сдачи":"Q1 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы банк","дата_парсинга":"2026-05-30 10:45:38","источник":"homsters.kz","score":0.903,"id":41,"lat":51.12385,"lng":71.44734},{"застройщик":"Eurasia Group","название_жк":"Eurasia Sky","город":"Астана","район_адрес":"Есиль, ул. Акмешіт 10","ссылка_жк":"https://kapster.kz/complex/eurasia-sky","ссылка_квартира":"https://kapster.kz/complex/eurasia-sky/apt/1k-50m2","комнат":1,"площадь_м2":50.0,"цена_полная_тг":35000000.0,"цена_за_м2_тг":700000.0,"этаж":"16/30","дом_блок_секция":"Tower C","срок_сдачи":"Q4 2027","статус":"строится","отделка":"дизайнерская","класс_жилья":"бизнес","условия_покупки":"ипотека, рассрочка 30%+70%","дата_парсинга":"2026-05-30 10:45:38","источник":"kapster.kz","score":0.522,"id":42,"lat":51.1618,"lng":71.46466},{"застройщик":"Eurasia Group","название_жк":"Eurasia Sky","город":"Астана","район_адрес":"Есиль, ул. Акмешіт 10","ссылка_жк":"https://kapster.kz/complex/eurasia-sky","ссылка_квартира":"https://kapster.kz/complex/eurasia-sky/apt/2k-80m2","комнат":2,"площадь_м2":80.0,"цена_полная_тг":56000000.0,"цена_за_м2_тг":700000.0,"этаж":"22/30","дом_блок_секция":"Tower D","срок_сдачи":"Q4 2027","статус":"строится","отделка":"дизайнерская","класс_жилья":"бизнес","условия_покупки":"ипотека, рассрочка 30%+70%","дата_парсинга":"2026-05-30 10:45:38","источник":"kapster.kz","score":0.522,"id":43,"lat":51.16195,"lng":71.46484},{"застройщик":"Qazaqstroy","название_жк":"Triumph","город":"Астана","район_адрес":"Байконур, ул. Сарыарка 26","ссылка_жк":"https://qazaqstroy.kz/ru/kompleksy/triumph","ссылка_квартира":"https://qazaqstroy.kz/ru/kvartiry/triumph-1k-promo","комнат":1,"площадь_м2":31.5,"цена_полная_тг":7875000.0,"цена_за_м2_тг":250000.0,"этаж":"1/18","дом_блок_секция":"Дом 1","срок_сдачи":"Q3 2025","статус":"акция","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"АКЦИЯ: 100% оплата, скидка 30%, только до 30.06.2026","дата_парсинга":"2026-05-30 10:45:38","источник":"qazaqstroy.kz","score":0.872,"id":44,"lat":51.14775,"lng":71.38732},{"застройщик":"Rams","название_жк":"Rams City","город":"Астана","район_адрес":"Байконур, ул. Момышулы 14","ссылка_жк":"https://ramsqz.com/ru/home","ссылка_квартира":"https://ramsqz.com/ru/apartments/rams-city-promo","комнат":2,"площадь_м2":54.0,"цена_полная_тг":13500000.0,"цена_за_м2_тг":250000.0,"этаж":"2/17","дом_блок_секция":"Корпус 1","срок_сдачи":"Q1 2026","статус":"акция","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"СТАРТОВАЯ ЦЕНА: только первые 5 квартир! Инвест-скидка 36%","дата_парсинга":"2026-05-30 10:45:38","источник":"ramsqz.com","score":0.815,"id":45,"lat":51.1504,"lng":71.395},{"застройщик":"Sensata","название_жк":"Sensata Residence","город":"Астана","район_адрес":"Есиль, Дипломатический городок, ул. Иманова 32","ссылка_жк":"https://sensata.kz/","ссылка_квартира":"https://sensata.kz/#premium-penthouse","комнат":4,"площадь_м2":210.0,"цена_полная_тг":null,"цена_за_м2_тг":null,"этаж":"13-14/14","дом_блок_секция":"Sky Penthouse","срок_сдачи":"Q2 2027","статус":"бронь","отделка":"дизайнерская по запросу","класс_жилья":"элит","условия_покупки":"индивидуальные условия, уточнить у менеджера","дата_парсинга":"2026-05-30 10:45:38","источник":"sensata.kz","score":0.368,"id":46,"lat":51.17105,"lng":71.42838},{"застройщик":"GBG","название_жк":"GBG Tower","город":"Астана","район_адрес":"Есиль, CBD, ул. Орынбор 18","ссылка_жк":"https://gbg.kz/astana","ссылка_квартира":"https://gbg.kz/astana/tower-penthouse","комнат":3,"площадь_м2":180.0,"цена_полная_тг":null,"цена_за_м2_тг":null,"этаж":"28/28","дом_блок_секция":"Penthouse Floor","срок_сдачи":"Q4 2027","статус":"бронь","отделка":"под ключ по проекту","класс_жилья":"элит","условия_покупки":"цена по запросу — отдел продаж: +7-7172-XX-XX-XX","дата_парсинга":"2026-05-30 10:45:38","источник":"gbg.kz","score":0.342,"id":47,"lat":51.1677,"lng":71.44536},{"застройщик":"BI Group","название_жк":"BI City 2","город":"Астана","район_адрес":"Алматинский, ул. Богенбай батыра 28","ссылка_жк":"https://bi.group/ru/complex/bi-city-2/","ссылка_квартира":"https://bi.group/ru/complex/bi-city-2/plans/?flat=20104","комнат":1,"площадь_м2":38.0,"цена_полная_тг":15200000.0,"цена_за_м2_тг":400000.0,"этаж":"14/16","дом_блок_секция":"Секция 4","срок_сдачи":"Q2 2026","статус":"доступно","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"bi.group","score":0.832,"id":48,"lat":51.12875,"lng":71.43204},{"застройщик":"BI Group","название_жк":"BI Plaza","город":"Астана","район_адрес":"Есиль, пр. Туран 24","ссылка_жк":"https://bi.group/ru/complex/bi-plaza/","ссылка_квартира":"https://bi.group/ru/complex/bi-plaza/plans/?flat=10204","комнат":4,"площадь_м2":108.5,"цена_полная_тг":56420000.0,"цена_за_м2_тг":520000.0,"этаж":"22/24","дом_блок_секция":"Блок В","срок_сдачи":"Q4 2025","статус":"доступно","отделка":"чистовая","класс_жилья":"комфорт","условия_покупки":"ипотека, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"bi.group","score":0.818,"id":49,"lat":51.1648,"lng":71.46796},{"застройщик":"BI Group","название_жк":"Alatau City","город":"Астана","район_адрес":"Есиль, пр. Кабанбай батыра 58","ссылка_жк":"https://bi.group/ru/complex/alatau-city/","ссылка_квартира":"https://bi.group/ru/complex/alatau-city/plans/?flat=30103","комнат":3,"площадь_м2":105.2,"цена_полная_тг":68380000.0,"цена_за_м2_тг":650000.0,"этаж":"25/30","дом_блок_секция":"Tower A","срок_сдачи":"Q1 2027","статус":"доступно","отделка":"дизайнерская","класс_жилья":"бизнес","условия_покупки":"ипотека, рассрочка","дата_парсинга":"2026-05-30 10:45:38","источник":"bi.group","score":0.633,"id":50,"lat":51.15735,"lng":71.48164},{"застройщик":"Qazaqstroy","название_жк":"Astra","город":"Астана","район_адрес":"Алматинский, пр. Республики 14","ссылка_жк":"https://qazaqstroy.kz/ru/kompleksy/astra","ссылка_квартира":"https://qazaqstroy.kz/ru/kvartiry/astra-3k-90m2","комнат":3,"площадь_м2":90.0,"цена_полная_тг":37800000.0,"цена_за_м2_тг":420000.0,"этаж":"15/20","дом_блок_секция":"Блок 3","срок_сдачи":"Q4 2026","статус":"строится","отделка":"чистовая","класс_жилья":"комфорт","условия_покупки":"ипотека, рассрочка до сдачи","дата_парсинга":"2026-05-30 10:45:38","источник":"qazaqstroy.kz","score":0.788,"id":51,"lat":51.1359,"lng":71.44102},{"застройщик":"Qazaqstroy","название_жк":"Nova","город":"Астана","район_адрес":"Нура, ул. Жубанова 4","ссылка_жк":"https://qazaqstroy.kz/ru/kompleksy/nova","ссылка_квартира":"https://qazaqstroy.kz/ru/kvartiry/nova-1k-35m2","комнат":1,"площадь_м2":35.5,"цена_полная_тг":13135000.0,"цена_за_м2_тг":370000.0,"этаж":"5/14","дом_блок_секция":"Дом А","срок_сдачи":"Q2 2027","статус":"строится","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы, рассрочка 30 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"qazaqstroy.kz","score":0.742,"id":52,"lat":51.10995,"lng":71.4538},{"застройщик":"Qazaqstroy","название_жк":"Nova","город":"Астана","район_адрес":"Нура, ул. Жубанова 4","ссылка_жк":"https://qazaqstroy.kz/ru/kompleksy/nova","ссылка_квартира":"https://qazaqstroy.kz/ru/kvartiry/nova-2k-58m2","комнат":2,"площадь_м2":58.0,"цена_полная_тг":21460000.0,"цена_за_м2_тг":370000.0,"этаж":"9/14","дом_блок_секция":"Дом Б","срок_сдачи":"Q2 2027","статус":"строится","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы, рассрочка 30 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"qazaqstroy.kz","score":0.742,"id":53,"lat":51.1101,"lng":71.45398},{"застройщик":"GBG","название_жк":"GBG Tower","город":"Астана","район_адрес":"Есиль, CBD, ул. Орынбор 18","ссылка_жк":"https://gbg.kz/astana","ссылка_квартира":"https://gbg.kz/astana/tower-1k","комнат":1,"площадь_м2":52.0,"цена_полная_тг":41600000.0,"цена_за_м2_тг":800000.0,"этаж":"10/28","дом_блок_секция":"Башня А","срок_сдачи":"Q4 2027","статус":"строится","отделка":"дизайнерская","класс_жилья":"бизнес-элит","условия_покупки":"ипотека, рассрочка 40%+60% при сдаче","дата_парсинга":"2026-05-30 10:45:38","источник":"gbg.kz","score":0.468,"id":54,"lat":51.16875,"lng":71.44536},{"застройщик":"GBG","название_жк":"GBG Tower","город":"Астана","район_адрес":"Есиль, CBD, ул. Орынбор 18","ссылка_жк":"https://gbg.kz/astana","ссылка_квартира":"https://gbg.kz/astana/tower-2k","комнат":2,"площадь_м2":82.5,"цена_полная_тг":66000000.0,"цена_за_м2_тг":800000.0,"этаж":"18/28","дом_блок_секция":"Башня Б","срок_сдачи":"Q4 2027","статус":"строится","отделка":"дизайнерская","класс_жилья":"бизнес-элит","условия_покупки":"ипотека, рассрочка 40%+60% при сдаче","дата_парсинга":"2026-05-30 10:45:38","источник":"gbg.kz","score":0.468,"id":55,"lat":51.16725,"lng":71.44554},{"застройщик":"SAT Development","название_жк":"SAT Premium","город":"Астана","район_адрес":"Есиль, ул. Мангилик Ел 55","ссылка_жк":"https://sat-ns.kz/","ссылка_квартира":"https://sat-ns.kz/#premium-1k","комнат":1,"площадь_м2":46.0,"цена_полная_тг":27600000.0,"цена_за_м2_тг":600000.0,"этаж":"8/18","дом_блок_секция":"Башня А","срок_сдачи":"Q3 2026","статус":"строится","отделка":"чистовая","класс_жилья":"бизнес","условия_покупки":"ипотека, рассрочка 0% 24 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"sat-ns.kz","score":0.682,"id":56,"lat":51.1631,"lng":71.43616},{"застройщик":"SAT Development","название_жк":"SAT Premium","город":"Астана","район_адрес":"Есиль, ул. Мангилик Ел 55","ссылка_жк":"https://sat-ns.kz/","ссылка_квартира":"https://sat-ns.kz/#premium-2k","комнат":2,"площадь_м2":72.0,"цена_полная_тг":43200000.0,"цена_за_м2_тг":600000.0,"этаж":"14/18","дом_блок_секция":"Башня Б","срок_сдачи":"Q3 2026","статус":"строится","отделка":"чистовая","класс_жилья":"бизнес","условия_покупки":"ипотека, рассрочка 0% 24 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"sat-ns.kz","score":0.682,"id":57,"lat":51.16325,"lng":71.43634},{"застройщик":"Asyl Stroy","название_жк":"Asyl Park","город":"Астана","район_адрес":"Байконур, мкр. Юго-Восток, ул. Темирбека Жургенова 4","ссылка_жк":"https://korter.kz/жк/asyl-park","ссылка_квартира":"https://korter.kz/жк/asyl-park/планировки/1к-32м2","комнат":1,"площадь_м2":32.0,"цена_полная_тг":10880000.0,"цена_за_м2_тг":340000.0,"этаж":"3/10","дом_блок_секция":"Корпус 1","срок_сдачи":"Q1 2026","статус":"строится","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы, рассрочка","дата_парсинга":"2026-05-30 10:45:38","источник":"korter.kz","score":0.815,"id":58,"lat":51.1462,"lng":71.37462},{"застройщик":"Asyl Stroy","название_жк":"Asyl Park","город":"Астана","район_адрес":"Байконур, мкр. Юго-Восток, ул. Темирбека Жургенова 4","ссылка_жк":"https://korter.kz/жк/asyl-park","ссылка_квартира":"https://korter.kz/жк/asyl-park/планировки/2к-52м2","комнат":2,"площадь_м2":52.0,"цена_полная_тг":17680000.0,"цена_за_м2_тг":340000.0,"этаж":"7/10","дом_блок_секция":"Корпус 2","срок_сдачи":"Q1 2026","статус":"строится","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы, рассрочка","дата_парсинга":"2026-05-30 10:45:38","источник":"korter.kz","score":0.815,"id":59,"lat":51.14635,"lng":71.3748},{"застройщик":"Asyl Stroy","название_жк":"Asyl Park","город":"Астана","район_адрес":"Байконур, мкр. Юго-Восток, ул. Темирбека Жургенова 4","ссылка_жк":"https://korter.kz/жк/asyl-park","ссылка_квартира":"https://korter.kz/жк/asyl-park/планировки/3к-74м2","комнат":3,"площадь_м2":74.0,"цена_полная_тг":25160000.0,"цена_за_м2_тг":340000.0,"этаж":"9/10","дом_блок_секция":"Корпус 3","срок_сдачи":"Q1 2026","статус":"строится","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы, рассрочка","дата_парсинга":"2026-05-30 10:45:38","источник":"korter.kz","score":0.815,"id":60,"lat":51.1465,"lng":71.37498},{"застройщик":"Grand Stroy","название_жк":"Grand Expo","город":"Астана","район_адрес":"Есиль, мкр. Экспо, ул. Кабанбай батыра 2","ссылка_жк":"https://korter.kz/жк/grand-expo","ссылка_квартира":"https://korter.kz/жк/grand-expo/планировки/1к-47м2","комнат":1,"площадь_м2":47.0,"цена_полная_тг":29140000.0,"цена_за_м2_тг":620000.0,"этаж":"12/22","дом_блок_секция":"Блок А","срок_сдачи":"Q2 2026","статус":"строится","отделка":"чистовая","класс_жилья":"бизнес","условия_покупки":"ипотека, рассрочка 0% до сдачи","дата_парсинга":"2026-05-30 10:45:38","источник":"korter.kz","score":0.66,"id":61,"lat":51.17135,"lng":71.41986},{"застройщик":"Grand Stroy","название_жк":"Grand Expo","город":"Астана","район_адрес":"Есиль, мкр. Экспо, ул. Кабанбай батыра 2","ссылка_жк":"https://korter.kz/жк/grand-expo","ссылка_квартира":"https://korter.kz/жк/grand-expo/планировки/2к-74м2","комнат":2,"площадь_м2":74.0,"цена_полная_тг":45880000.0,"цена_за_м2_тг":620000.0,"этаж":"18/22","дом_блок_секция":"Блок Б","срок_сдачи":"Q2 2026","статус":"строится","отделка":"чистовая","класс_жилья":"бизнес","условия_покупки":"ипотека, рассрочка 0% до сдачи","дата_парсинга":"2026-05-30 10:45:38","источник":"korter.kz","score":0.66,"id":62,"lat":51.1715,"lng":71.42004},{"застройщик":"Grand Stroy","название_жк":"Grand Expo","город":"Астана","район_адрес":"Есиль, мкр. Экспо, ул. Кабанбай батыра 2","ссылка_жк":"https://korter.kz/жк/grand-expo","ссылка_квартира":"https://korter.kz/жк/grand-expo/планировки/3к-98м2","комнат":3,"площадь_м2":98.0,"цена_полная_тг":60760000.0,"цена_за_м2_тг":620000.0,"этаж":"21/22","дом_блок_секция":"Блок В","срок_сдачи":"Q2 2026","статус":"строится","отделка":"чистовая","класс_жилья":"бизнес","условия_покупки":"ипотека, рассрочка 0% до сдачи","дата_парсинга":"2026-05-30 10:45:38","источник":"korter.kz","score":0.66,"id":63,"lat":51.17165,"lng":71.41896},{"застройщик":"Caspian Group","название_жк":"Caspian Towers","город":"Астана","район_адрес":"Есиль, ул. Сыганак 28","ссылка_жк":"https://homsters.kz/estate/caspian-towers/","ссылка_квартира":"https://homsters.kz/estate/caspian-towers/1k-44m2","комнат":1,"площадь_м2":44.0,"цена_полная_тг":29920000.0,"цена_за_м2_тг":680000.0,"этаж":"7/24","дом_блок_секция":"Tower 1","срок_сдачи":"Q4 2026","статус":"строится","отделка":"чистовая","класс_жилья":"бизнес","условия_покупки":"ипотека Halyk, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"homsters.kz","score":0.59,"id":64,"lat":51.1591,"lng":71.46144},{"застройщик":"Caspian Group","название_жк":"Caspian Towers","город":"Астана","район_адрес":"Есиль, ул. Сыганак 28","ссылка_жк":"https://homsters.kz/estate/caspian-towers/","ссылка_квартира":"https://homsters.kz/estate/caspian-towers/2k-68m2","комнат":2,"площадь_м2":68.0,"цена_полная_тг":46240000.0,"цена_за_м2_тг":680000.0,"этаж":"14/24","дом_блок_секция":"Tower 2","срок_сдачи":"Q4 2026","статус":"строится","отделка":"чистовая","класс_жилья":"бизнес","условия_покупки":"ипотека Halyk, рассрочка 0%","дата_парсинга":"2026-05-30 10:45:38","источник":"homsters.kz","score":0.59,"id":65,"lat":51.15925,"lng":71.46162},{"застройщик":"Altai Invest","название_жк":"Altai City","город":"Астана","район_адрес":"Алматинский, мкр. Тулпар, ул. Алматы 18","ссылка_жк":"https://homsters.kz/estate/altai-city/","ссылка_квартира":"https://homsters.kz/estate/altai-city/1k-34m2","комнат":1,"площадь_м2":34.0,"цена_полная_тг":11560000.0,"цена_за_м2_тг":340000.0,"этаж":"4/12","дом_блок_секция":"Корпус 1","срок_сдачи":"Q3 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы, рассрочка 12 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"homsters.kz","score":0.883,"id":66,"lat":51.11505,"lng":71.4228},{"застройщик":"Altai Invest","название_жк":"Altai City","город":"Астана","район_адрес":"Алматинский, мкр. Тулпар, ул. Алматы 18","ссылка_жк":"https://homsters.kz/estate/altai-city/","ссылка_квартира":"https://homsters.kz/estate/altai-city/2k-56m2","комнат":2,"площадь_м2":56.0,"цена_полная_тг":19040000.0,"цена_за_м2_тг":340000.0,"этаж":"8/12","дом_блок_секция":"Корпус 2","срок_сдачи":"Q3 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы, рассрочка 12 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"homsters.kz","score":0.883,"id":67,"lat":51.1152,"lng":71.42298},{"застройщик":"Altai Invest","название_жк":"Altai City","город":"Астана","район_адрес":"Алматинский, мкр. Тулпар, ул. Алматы 18","ссылка_жк":"https://homsters.kz/estate/altai-city/","ссылка_квартира":"https://homsters.kz/estate/altai-city/3k-78m2","комнат":3,"площадь_м2":78.0,"цена_полная_тг":26520000.0,"цена_за_м2_тг":340000.0,"этаж":"11/12","дом_блок_секция":"Корпус 3","срок_сдачи":"Q3 2025","статус":"сдан","отделка":"черновая","класс_жилья":"эконом","условия_покупки":"ипотека Отбасы, рассрочка 12 мес","дата_парсинга":"2026-05-30 10:45:38","источник":"homsters.kz","score":0.883,"id":68,"lat":51.11535,"lng":71.42316},{"застройщик":"Prime Development","название_жк":"Prime Residence","город":"Астана","район_адрес":"Есиль, ул. Достык 18","ссылка_жк":"https://kapster.kz/complex/prime-residence","ссылка_квартира":"https://kapster.kz/complex/prime-residence/apt/1k-55m2","комнат":1,"площадь_м2":55.0,"цена_полная_тг":44000000.0,"цена_за_м2_тг":800000.0,"этаж":"13/25","дом_блок_секция":"Блок 1","срок_сдачи":"Q1 2027","статус":"строится","отделка":"дизайнерская","класс_жилья":"бизнес-элит","условия_покупки":"ипотека, рассрочка 30%+70%","дата_парсинга":"2026-05-30 10:45:38","источник":"kapster.kz","score":0.475,"id":69,"lat":51.1629,"lng":71.45004},{"застройщик":"Prime Development","название_жк":"Prime Residence","город":"Астана","район_адрес":"Есиль, ул. Достык 18","ссылка_жк":"https://kapster.kz/complex/prime-residence","ссылка_квартира":"https://kapster.kz/complex/prime-residence/apt/2k-88m2","комнат":2,"площадь_м2":88.0,"цена_полная_тг":70400000.0,"цена_за_м2_тг":800000.0,"этаж":"20/25","дом_блок_секция":"Блок 2","срок_сдачи":"Q1 2027","статус":"строится","отделка":"дизайнерская","класс_жилья":"бизнес-элит","условия_покупки":"ипотека, рассрочка 30%+70%","дата_парсинга":"2026-05-30 10:45:38","источник":"kapster.kz","score":0.475,"id":70,"lat":51.16305,"lng":71.44896},{"застройщик":"Prime Development","название_жк":"Prime Residence","город":"Астана","район_адрес":"Есиль, ул. Достык 18","ссылка_жк":"https://kapster.kz/complex/prime-residence","ссылка_квартира":"https://kapster.kz/complex/prime-residence/apt/3k-120m2","комнат":3,"площадь_м2":120.0,"цена_полная_тг":96000000.0,"цена_за_м2_тг":800000.0,"этаж":"24/25","дом_блок_секция":"Блок 3","срок_сдачи":"Q1 2027","статус":"строится","отделка":"дизайнерская","класс_жилья":"бизнес-элит","условия_покупки":"ипотека, рассрочка 30%+70%","дата_парсинга":"2026-05-30 10:45:38","источник":"kapster.kz","score":0.475,"id":71,"lat":51.1632,"lng":71.44914},{"застройщик":"Alma Group","название_жк":"Alma Residence","город":"Астана","район_адрес":"Алматинский, ул. Иманбаева 8","ссылка_жк":"https://krisha.kz/kompleksy/alma-residence/","ссылка_квартира":"https://krisha.kz/kompleksy/alma-residence/flat/1k-39m2","комнат":1,"площадь_м2":39.0,"цена_полная_тг":15210000.0,"цена_за_м2_тг":390000.0,"этаж":"6/14","дом_блок_секция":"Корпус А","срок_сдачи":"Q4 2025","статус":"сдан","отделка":"черновая","класс_жилья":"комфорт","условия_покупки":"ипотека Kaspi, рассрочка","дата_парсинга":"2026-05-30 10:45:38","источник":"krisha.kz","score":0.832,"id":72,"lat":51.13265,"lng":71.43832},{"застройщик":"Alma Group","название_жк":"Alma Residence","город":"Астана","район_адрес":"Алматинский, ул. Иманбаева 8","ссылка_жк":"https://krisha.kz/kompleksy/alma-residence/","ссылка_квартира":"https://krisha.kz/kompleksy/alma-residence/flat/2k-63m2","комнат":2,"площадь_м2":63.0,"цена_полная_тг":24570000.0,"цена_за_м2_тг":390000.0,"этаж":"10/14","дом_блок_секция":"Корпус Б","срок_сдачи":"Q4 2025","статус":"сдан","отделка":"черновая","класс_жилья":"комфорт","условия_покупки":"ипотека Kaspi, рассрочка","дата_парсинга":"2026-05-30 10:45:38","источник":"krisha.kz","score":0.832,"id":73,"lat":51.1328,"lng":71.4385},{"застройщик":"Alma Group","название_жк":"Alma Residence","город":"Астана","район_адрес":"Алматинский, ул. Иманбаева 8","ссылка_жк":"https://krisha.kz/kompleksy/alma-residence/","ссылка_квартира":"https://krisha.kz/kompleksy/alma-residence/flat/3k-88m2","комнат":3,"площадь_м2":88.0,"цена_полная_тг":34320000.0,"цена_за_м2_тг":390000.0,"этаж":"13/14","дом_блок_секция":"Корпус В","срок_сдачи":"Q4 2025","статус":"сдан","отделка":"черновая","класс_жилья":"комфорт","условия_покупки":"ипотека Kaspi, рассрочка","дата_парсинга":"2026-05-30 10:45:38","источник":"krisha.kz","score":0.832,"id":74,"lat":51.13295,"lng":71.43868}];
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+const S = {
+  q: '',
+  rooms: new Set(['all']),
+  pMin: 7, pMax: 131,
+  m2Min: 250, m2Max: 1050,
+  aMin: 27, aMax: 210,
+  dists: new Set(['есиль','алматинский','байконур','нура']),
+  classes: new Set(['эконом','комфорт','комфорт+','бизнес','бизнес-элит','элит']),
+  statuses: new Set(['сдан','доступно','строится','акция','бронь']),
+  mortgage: true,
+  install: true,
+  sources: new Set(APTS.map(a=>a['источник'])),
+  sort: 'score-d',
+  view: 'cards',
+  highlighted: null,
+};
+
+// ── MAP ───────────────────────────────────────────────────────────────────
+const map = L.map('map', {zoomControl: true}).setView([51.148, 71.435], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+  maxZoom: 19,
+}).addTo(map);
+
+const clusters = L.markerClusterGroup({
+  maxClusterRadius: 45,
+  iconCreateFunction: function(cluster) {
+    const n = cluster.getChildCount();
+    const sz = n > 20 ? 44 : n > 10 ? 38 : 32;
+    return L.divIcon({
+      html: `<div style="width:${sz}px;height:${sz}px;background:#2563eb;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:${sz>38?14:12}px;box-shadow:0 2px 6px rgba(0,0,0,.3);border:2px solid #fff">${n}</div>`,
+      className: '', iconSize: [sz,sz],
+    });
+  }
+});
+map.addLayer(clusters);
+
+const markerMap = {};  // id → marker
+
+function classColor(cls) {
+  if (!cls) return '#94a3b8';
+  const c = cls.toLowerCase();
+  if (c.includes('элит')) return c.includes('бизнес') ? '#dc2626' : '#7c3aed';
+  if (c.includes('бизнес')) return '#ea580c';
+  if (c.includes('комфорт')) return '#2563eb';
+  if (c.includes('эконом')) return '#16a34a';
+  return '#64748b';
+}
+
+function fmtPrice(p) {
+  if (!p) return null;
+  return p >= 1e6 ? (p/1e6).toFixed(2).replace(/\.?0+$/,'') + ' млн ₸' : p.toLocaleString('ru') + ' ₸';
+}
+function fmtM2(p) {
+  if (!p) return null;
+  return Math.round(p).toLocaleString('ru') + ' ₸/м²';
+}
+
+function makeMarker(apt) {
+  const col = apt['цена_полная_тг'] ? classColor(apt['класс_жилья']) : '#94a3b8';
+  const icon = L.divIcon({
+    className: '',
+    html: `<div style="width:13px;height:13px;background:${col};border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);cursor:pointer"></div>`,
+    iconSize: [13,13], iconAnchor: [6,6],
+  });
+  const m = L.marker([apt.lat, apt.lng], {icon, aptId: apt.id});
+
+  const rooms_str = apt['комнат'] == 0 ? 'Студия' : (apt['комнат'] ? apt['комнат']+'к' : '—');
+  const terms = apt['условия_покупки'] || '';
+  const hasM = terms.toLowerCase().includes('ипотек');
+  const hasI = terms.toLowerCase().includes('рассрочк');
+  const termsStr = [hasM?'🏦 Ипотека':'', hasI?'📅 Рассрочка':''].filter(Boolean).join('  ');
+
+  let priceHtml = apt['цена_полная_тг']
+    ? `<div class="pp-pr">${fmtPrice(apt['цена_полная_тг'])}</div><div class="pp-m2">${fmtM2(apt['цена_за_м2_тг'])}</div>`
+    : `<div class="pp-np">Цена по запросу</div>`;
+
+  const popup = `
+    <div class="pp-ttl">${apt['название_жк'] || '—'}</div>
+    <div class="pp-dev">👷 ${apt['застройщик'] || '—'}</div>
+    ${priceHtml}
+    <div class="pp-g">
+      <div class="pp-gi"><div class="l">Комнат</div><div class="v">${rooms_str}</div></div>
+      <div class="pp-gi"><div class="l">Площадь</div><div class="v">${apt['площадь_м2'] ? apt['площадь_м2']+' м²':'—'}</div></div>
+      <div class="pp-gi"><div class="l">Этаж</div><div class="v">${apt['этаж'] || '—'}</div></div>
+      <div class="pp-gi"><div class="l">Срок сдачи</div><div class="v">${apt['срок_сдачи'] || '—'}</div></div>
+      <div class="pp-gi"><div class="l">Класс</div><div class="v">${apt['класс_жилья'] || '—'}</div></div>
+      <div class="pp-gi"><div class="l">Статус</div><div class="v">${apt['статус'] || '—'}</div></div>
+    </div>
+    ${termsStr ? `<div class="pp-trm">${termsStr}</div>` : ''}
+    <div class="pp-src">📡 ${apt['источник'] || '—'} | Score: ${apt['score'] || 0}</div>
+    ${apt['ссылка_квартира'] ? `<a class="pp-btn" href="${apt['ссылка_квартира']}" target="_blank">Смотреть на сайте →</a>` : ''}
+  `;
+  m.bindPopup(popup, {maxWidth: 270, minWidth: 220});
+  m.on('click', () => highlight(apt.id));
+  return m;
+}
+
+// ── FILTER ───────────────────────────────────────────────────────────────
+function districtOf(addr) {
+  if (!addr) return '';
+  const a = addr.toLowerCase();
+  if (a.includes('есиль')) return 'есиль';
+  if (a.includes('алматинский')) return 'алматинский';
+  if (a.includes('байконур')) return 'байконур';
+  if (a.includes('нура')) return 'нура';
+  return 'другой';
+}
+
+function filterApts() {
+  return APTS.filter(a => {
+    const q = S.q.toLowerCase();
+    if (q && ![a['название_жк'],a['застройщик'],a['район_адрес'],a['источник']].join(' ').toLowerCase().includes(q)) return false;
+
+    // rooms
+    if (!S.rooms.has('all')) {
+      const r = a['комнат'];
+      if (S.rooms.has('4')) { if (!(r >= 4 || (r == null && !S.rooms.has('0')))) return false; }
+      const rv = r == null ? null : (r === 0 ? '0' : String(Math.min(r,4)));
+      if (rv && !S.rooms.has(rv) && !S.rooms.has('4')) return false;
+      if (rv === null && !S.rooms.has('0')) return false;
+    }
+
+    // price
+    const p = a['цена_полная_тг'];
+    if (p) {
+      const pm = p / 1e6;
+      if (pm < S.pMin || pm > S.pMax) return false;
+    }
+    // m2
+    const m2 = a['цена_за_м2_тг'];
+    if (m2) {
+      const m2k = m2 / 1000;
+      if (m2k < S.m2Min || m2k > S.m2Max) return false;
+    }
+    // area
+    const ar = a['площадь_м2'];
+    if (ar && (ar < S.aMin || ar > S.aMax)) return false;
+
+    // district
+    const d = districtOf(a['район_адрес']);
+    if (!S.dists.has(d) && d !== '') return false;
+
+    // class
+    const cls = (a['класс_жилья'] || '').toLowerCase();
+    if (!S.classes.has(cls)) return false;
+
+    // status
+    const st = (a['статус'] || '').toLowerCase();
+    const stMatch = [...S.statuses].some(s => st.includes(s));
+    if (!stMatch) return false;
+
+    // mortgage/install
+    const terms = (a['условия_покупки'] || '').toLowerCase();
+    if (!S.mortgage && !S.install) {} // both off = show all
+    else if (S.mortgage && !S.install) { if (!terms.includes('ипотек')) return false; }
+    else if (!S.mortgage && S.install) { if (!terms.includes('рассрочк')) return false; }
+
+    // source
+    if (!S.sources.has(a['источник'])) return false;
+
+    return true;
+  });
+}
+
+function sortApts(arr) {
+  return [...arr].sort((a,b) => {
+    switch(S.sort) {
+      case 'price-a': return (a['цена_полная_тг']||Infinity) - (b['цена_полная_тг']||Infinity);
+      case 'price-d': return (b['цена_полная_тг']||0) - (a['цена_полная_тг']||0);
+      case 'm2-a': return (a['цена_за_м2_тг']||Infinity) - (b['цена_за_м2_тг']||Infinity);
+      case 'm2-d': return (b['цена_за_м2_тг']||0) - (a['цена_за_м2_тг']||0);
+      case 'area-a': return (a['площадь_м2']||Infinity) - (b['площадь_м2']||Infinity);
+      case 'area-d': return (b['площадь_м2']||0) - (a['площадь_м2']||0);
+      default: return (b['score']||0) - (a['score']||0); // score-d
+    }
+  });
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+function classBadge(cls) {
+  if (!cls) return '';
+  const c = cls.toLowerCase();
+  let klass = 'b-comf';
+  if (c==='эконом') klass='b-ekon';
+  else if (c==='комфорт+') klass='b-comp';
+  else if (c==='бизнес') klass='b-biz';
+  else if (c==='бизнес-элит') klass='b-bize';
+  else if (c==='элит') klass='b-elit';
+  return `<span class="bdg ${klass}">${cls}</span>`;
+}
+function statusBadge(st) {
+  if (!st) return '';
+  const s = st.toLowerCase();
+  let klass = 'b-avl';
+  if (s==='сдан') klass='b-sdan';
+  else if (s==='строится') klass='b-strt';
+  else if (s==='акция') klass='b-akc';
+  else if (s==='бронь') klass='b-bron';
+  return `<span class="bdg ${klass}">${st}</span>`;
+}
+
+function renderCards(apts) {
+  const el = document.getElementById('cards');
+  el.innerHTML = '';
+  apts.forEach(apt => {
+    const SUSP = apt['цена_за_м2_тг'] && apt['цена_за_м2_тг'] < 270000;
+    const terms = (apt['условия_покупки']||'').toLowerCase();
+    const hasM = terms.includes('ипотек'), hasI = terms.includes('рассрочк');
+    const rooms_str = apt['комнат'] === 0 ? 'Студия' : (apt['комнат'] ? apt['комнат']+'к' : '—');
+    const div = document.createElement('div');
+    div.className = 'ac' + (S.highlighted === apt.id ? ' hl' : '');
+    div.dataset.id = apt.id;
+    div.innerHTML = `
+      ${SUSP ? '<div class="sflag">⚠ АКЦИЯ</div>' : ''}
+      <div class="cbds">${classBadge(apt['класс_жилья'])}${statusBadge(apt['статус'])}</div>
+      <div class="ct1">${apt['название_жк'] || '—'}</div>
+      <div class="cd">👷 ${apt['застройщик'] || '—'}</div>
+      <div class="cm">
+        <span class="cmi">🛏 <span class="v">${rooms_str}</span></span>
+        <span class="cmi">📐 <span class="v">${apt['площадь_м2'] ? apt['площадь_м2']+' м²':'—'}</span></span>
+        <span class="cmi">🏢 <span class="v">${apt['этаж'] || '—'}</span></span>
+      </div>
+      ${apt['цена_полная_тг']
+        ? `<div class="cpr">${fmtPrice(apt['цена_полная_тг'])}</div><div class="cpm2">${fmtM2(apt['цена_за_м2_тг'])}</div>`
+        : `<div class="cnp">Цена по запросу 📞</div>`}
+      <div class="cf">
+        <span>${apt['срок_сдачи'] || '—'}</span>
+        ${hasM ? '<span title="Ипотека">🏦</span>' : ''}
+        ${hasI ? '<span title="Рассрочка">📅</span>' : ''}
+        <span class="csc">Score: ${apt['score'] || 0}</span>
+        <span class="cfr">${apt['ссылка_квартира'] ? `<a href="${apt['ссылка_квартира']}" target="_blank">→ ${apt['источник']}</a>` : apt['источник']||''}</span>
+      </div>
+    `;
+    div.addEventListener('click', () => {
+      highlight(apt.id);
+      if (markerMap[apt.id]) {
+        map.setView([apt.lat, apt.lng], 15);
+        markerMap[apt.id].openPopup();
+      }
+    });
+    el.appendChild(div);
+  });
+}
+
+function renderTable(apts) {
+  const tb = document.getElementById('tbody');
+  tb.innerHTML = '';
+  apts.forEach(apt => {
+    const tr = document.createElement('tr');
+    if (S.highlighted === apt.id) tr.classList.add('hl');
+    tr.dataset.id = apt.id;
+    const rooms_str = apt['комнат'] === 0 ? 'Студия' : (apt['комнат'] ?? '—');
+    const district = districtOf(apt['район_адрес'] || '');
+    const terms = (apt['условия_покупки']||'').toLowerCase();
+    const conds = [terms.includes('ипотек')?'🏦':'', terms.includes('рассрочк')?'📅':''].filter(Boolean).join(' ');
+    tr.innerHTML = `
+      <td><strong>${apt['название_жк']||'—'}</strong></td>
+      <td>${apt['застройщик']||'—'}</td>
+      <td>${district}</td>
+      <td>${rooms_str}</td>
+      <td>${apt['площадь_м2']||'—'}</td>
+      <td class="${apt['цена_полная_тг']?'tp':'tnp'}">${apt['цена_полная_тг'] ? fmtPrice(apt['цена_полная_тг']) : 'по запросу'}</td>
+      <td class="${apt['цена_за_м2_тг']?'tp':'tnp'}">${apt['цена_за_м2_тг'] ? fmtM2(apt['цена_за_м2_тг']) : '—'}</td>
+      <td>${apt['этаж']||'—'}</td>
+      <td>${apt['срок_сдачи']||'—'}</td>
+      <td>${statusBadge(apt['статус'])}</td>
+      <td>${classBadge(apt['класс_жилья'])}</td>
+      <td>${conds}</td>
+      <td>${apt['score']||0}</td>
+      <td>${apt['ссылка_квартира'] ? `<a href="${apt['ссылка_квартира']}" target="_blank" style="color:var(--acc);font-size:10px">→</a>` : ''}</td>
+    `;
+    tr.addEventListener('click', () => {
+      highlight(apt.id);
+      if (markerMap[apt.id]) { map.setView([apt.lat, apt.lng], 15); markerMap[apt.id].openPopup(); }
+    });
+    tb.appendChild(tr);
+  });
+}
+
+function updateMap(apts) {
+  clusters.clearLayers();
+  Object.keys(markerMap).forEach(k => delete markerMap[k]);
+  apts.forEach(apt => {
+    const m = makeMarker(apt);
+    markerMap[apt.id] = m;
+    clusters.addLayer(m);
+  });
+}
+
+function updateStats(apts) {
+  const withPrice = apts.filter(a => a['цена_полная_тг']);
+  const withM2 = apts.filter(a => a['цена_за_м2_тг']);
+  const cnt = apts.length;
+  const avgM2 = withM2.length ? Math.round(withM2.reduce((s,a) => s + a['цена_за_м2_тг'], 0) / withM2.length) : 0;
+  const minP = withPrice.length ? Math.min(...withPrice.map(a=>a['цена_полная_тг'])) : 0;
+  const maxP = withPrice.length ? Math.max(...withPrice.map(a=>a['цена_полная_тг'])) : 0;
+  const jk = new Set(apts.map(a=>a['название_жк'])).size;
+
+  document.getElementById('st-cnt').textContent = cnt;
+  document.getElementById('st-avg').textContent = avgM2 ? fmtM2(avgM2) : '—';
+  document.getElementById('st-min').textContent = minP ? fmtPrice(minP) : '—';
+  document.getElementById('st-max').textContent = maxP ? fmtPrice(maxP) : '—';
+  document.getElementById('hs-total').textContent = cnt;
+  document.getElementById('hs-avg').textContent = avgM2 ? Math.round(avgM2/1000)+'К' : '—';
+  document.getElementById('hs-min').textContent = minP ? (minP/1e6).toFixed(1)+'М' : '—';
+  document.getElementById('hs-jk').textContent = jk;
+}
+
+function updateCounts(filtered) {
+  // district counts
+  ['есиль','алматинский','байконур','нура'].forEach(d => {
+    const cnt = filtered.filter(a => districtOf(a['район_адрес']||'') === d).length;
+    const el = document.querySelector(`#f-dist input[value="${d}"]`)?.closest('.ci')?.querySelector('.cnt');
+    if (el) el.textContent = cnt;
+  });
+  // class counts
+  ['эконом','комфорт','комфорт+','бизнес','бизнес-элит','элит'].forEach(c => {
+    const cnt = filtered.filter(a => (a['класс_жилья']||'').toLowerCase() === c).length;
+    const el = document.querySelector(`#f-class input[value="${c}"]`)?.closest('.ci')?.querySelector('.cnt');
+    if (el) el.textContent = cnt;
+  });
+  // status counts
+  ['сдан','доступно','строится','акция','бронь'].forEach(s => {
+    const cnt = filtered.filter(a => (a['статус']||'').toLowerCase().includes(s)).length;
+    const el = document.querySelector(`#f-status input[value="${s}"]`)?.closest('.ci')?.querySelector('.cnt');
+    if (el) el.textContent = cnt;
+  });
+  // source counts
+  [...S.sources].concat([...new Set(APTS.map(a=>a['источник']))]).forEach(src => {
+    const cnt = filtered.filter(a => a['источник'] === src).length;
+    const el = document.querySelector(`#f-src input[value="${src}"]`)?.closest('.ci')?.querySelector('.cnt');
+    if (el) el.textContent = cnt;
+  });
+}
+
+function update() {
+  const filtered = filterApts();
+  const sorted = sortApts(filtered);
+  const empty = document.getElementById('emp');
+  empty.classList.toggle('on', sorted.length === 0);
+  updateMap(sorted);
+  updateStats(sorted);
+  updateCounts(sorted);
+  if (S.view === 'cards') {
+    document.getElementById('cards').classList.remove('hid');
+    document.getElementById('tbl-wrap').classList.remove('on');
+    renderCards(sorted);
+  } else {
+    document.getElementById('cards').classList.add('hid');
+    document.getElementById('tbl-wrap').classList.add('on');
+    renderTable(sorted);
+  }
+}
+
+function highlight(id) {
+  S.highlighted = S.highlighted === id ? null : id;
+  // update cards
+  document.querySelectorAll('.ac').forEach(el => el.classList.toggle('hl', +el.dataset.id === id));
+  document.querySelectorAll('#tbody tr').forEach(el => el.classList.toggle('hl', +el.dataset.id === id));
+  // scroll card into view
+  const card = document.querySelector(`.ac[data-id="${id}"]`);
+  if (card) card.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+// ── DUAL RANGE ────────────────────────────────────────────────────────────
+function initDR(containerId, fillId, minNum, maxNum, minKey, maxKey, scale=1) {
+  const cont = document.getElementById(containerId);
+  const rMin = cont.querySelector('.rmin');
+  const rMax = cont.querySelector('.rmax');
+  const fill = document.getElementById(fillId);
+  const nMin = document.getElementById(minNum);
+  const nMax = document.getElementById(maxNum);
+  function upd(updateState=true) {
+    let vMin = parseFloat(rMin.value), vMax = parseFloat(rMax.value);
+    if (vMin > vMax) { vMax = vMin; rMax.value = vMax; }
+    const mn = parseFloat(rMin.min), mx = parseFloat(rMin.max);
+    const pMin = (vMin-mn)/(mx-mn)*100, pMax = (vMax-mn)/(mx-mn)*100;
+    fill.style.left = pMin+'%'; fill.style.width = (pMax-pMin)+'%';
+    nMin.value = vMin; nMax.value = vMax;
+    if (updateState) { S[minKey] = vMin/scale; S[maxKey] = vMax/scale; update(); }
+  }
+  rMin.addEventListener('input', upd);
+  rMax.addEventListener('input', ()=> {
+    if (parseFloat(rMax.value) < parseFloat(rMin.value)) rMax.value = rMin.value;
+    upd();
+  });
+  nMin.addEventListener('change', () => { rMin.value = nMin.value; upd(); });
+  nMax.addEventListener('change', () => { rMax.value = nMax.value; upd(); });
+  upd(false);
+}
+
+// ── EVENTS ────────────────────────────────────────────────────────────────
+// Search
+let searchTimer;
+document.getElementById('gsearch').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { S.q = e.target.value; update(); }, 250);
+});
+
+// Rooms
+document.getElementById('f-rooms').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  const v = chip.dataset.val;
+  if (v === 'all') {
+    S.rooms = new Set(['all']);
+    document.querySelectorAll('#f-rooms .chip').forEach(c => c.classList.toggle('on', c.dataset.val==='all'));
+  } else {
+    S.rooms.delete('all');
+    chip.classList.toggle('on');
+    if (chip.classList.contains('on')) S.rooms.add(v); else S.rooms.delete(v);
+    if (S.rooms.size === 0) {
+      S.rooms.add('all');
+      document.querySelectorAll('#f-rooms .chip').forEach(c => c.classList.toggle('on', c.dataset.val==='all'));
+    }
+    document.querySelector('#f-rooms .chip[data-val="all"]').classList.remove('on');
+  }
+  update();
+});
+
+// Ranges
+initDR('dr-price','rf-price','p-min','p-max','pMin','pMax', 1);
+initDR('dr-m2',   'rf-m2',   'm2-min','m2-max','m2Min','m2Max', 1);
+initDR('dr-area', 'rf-area', 'a-min','a-max','aMin','aMax', 1);
+
+// Checkboxes - district
+document.querySelectorAll('#f-dist input').forEach(cb => {
+  cb.addEventListener('change', () => {
+    if (cb.checked) S.dists.add(cb.value); else S.dists.delete(cb.value);
+    update();
+  });
+});
+// class
+document.querySelectorAll('#f-class input').forEach(cb => {
+  cb.addEventListener('change', () => {
+    if (cb.checked) S.classes.add(cb.value); else S.classes.delete(cb.value);
+    update();
+  });
+});
+// status
+document.querySelectorAll('#f-status input').forEach(cb => {
+  cb.addEventListener('change', () => {
+    if (cb.checked) S.statuses.add(cb.value); else S.statuses.delete(cb.value);
+    update();
+  });
+});
+// source
+document.querySelectorAll('#f-src input').forEach(cb => {
+  cb.addEventListener('change', () => {
+    if (cb.checked) S.sources.add(cb.value); else S.sources.delete(cb.value);
+    update();
+  });
+});
+
+// Mortgage/Install toggles
+const fM = document.getElementById('f-mortgage');
+const fI = document.getElementById('f-install');
+fM.addEventListener('click', () => { S.mortgage = !S.mortgage; fM.classList.toggle('on', S.mortgage); update(); });
+fI.addEventListener('click', () => { S.install = !S.install; fI.classList.toggle('on', S.install); update(); });
+
+// Sort
+document.getElementById('ss').addEventListener('change', e => { S.sort = e.target.value; update(); });
+
+// View
+document.getElementById('vb-cards').addEventListener('click', () => {
+  S.view = 'cards';
+  document.getElementById('vb-cards').classList.add('on');
+  document.getElementById('vb-table').classList.remove('on');
+  update();
+});
+document.getElementById('vb-table').addEventListener('click', () => {
+  S.view = 'table';
+  document.getElementById('vb-table').classList.add('on');
+  document.getElementById('vb-cards').classList.remove('on');
+  update();
+});
+
+// Table sort
+document.querySelectorAll('th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    const numeric = ['комнат','площадь_м2','цена_полная_тг','цена_за_м2_тг','score'].includes(col);
+    const wasAsc = th.classList.contains('sa');
+    document.querySelectorAll('th').forEach(t => t.classList.remove('sa','sd'));
+    if (wasAsc) {
+      th.classList.add('sd');
+      S.sort = col + '-d';
+    } else {
+      th.classList.add('sa');
+      S.sort = col + '-a';
+    }
+    update();
+  });
+});
+
+// Export CSV
+document.getElementById('eb').addEventListener('click', () => {
+  const filtered = sortApts(filterApts());
+  const cols = ['название_жк','застройщик','район_адрес','комнат','площадь_м2',
+    'цена_полная_тг','цена_за_м2_тг','этаж','срок_сдачи','статус',
+    'класс_жилья','условия_покупки','score','источник','ссылка_квартира'];
+  const header = cols.join(';');
+  const rows = filtered.map(a => cols.map(c => {
+    const v = a[c];
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    return s.includes(';') || s.includes('"') ? `"${s.replace(/"/g,'""')}"` : s;
+  }).join(';'));
+  const csv = '﻿' + [header, ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'novostrojki_astana_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+});
+
+// Reset
+document.getElementById('rst').addEventListener('click', () => {
+  location.reload();
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+update();
+</script>
+</body>
+</html>
